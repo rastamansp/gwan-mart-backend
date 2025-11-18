@@ -79,10 +79,10 @@ export class TypeOrmProductRepository implements IProductRepository {
 
   async findFeatured(): Promise<Product[]> {
     return this.productRepository.find({
-      where: { isActive: true },
+      where: { isActive: true, isFeatured: true },
       relations: ['images'],
       order: { createdAt: 'DESC' },
-      take: 10, // Retorna os primeiros 10 produtos mais recentes
+      take: 20, // Retorna os primeiros 20 produtos em destaque
     });
   }
 

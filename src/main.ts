@@ -5,6 +5,7 @@ import { AppModule } from './app.module';
 import { DomainExceptionFilter } from './shared/presentation/filters/domain-exception.filter';
 import { HttpExceptionFilter } from './shared/presentation/filters/http-exception.filter';
 import { LoggingMiddleware } from './shared/infrastructure/middleware/logging.middleware';
+import { Request, Response, NextFunction } from 'express';
 
 export async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -56,16 +57,81 @@ export async function bootstrap() {
         ? defaultProdOrigins
         : defaultDevOrigins);
 
+  // Configuração de CORS mais permissiva
+  const isDevelopment = process.env.NODE_ENV !== 'production';
+  
   app.enableCors({
-    origin: corsOrigins,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    origin: (origin, callback) => {
+      // Permitir requisições sem origem (ex: Postman, mobile apps, curl)
+      if (!origin) {
+        return callback(null, true);
+      }
+      
+      // Em desenvolvimento, permitir TODAS as origens localhost (qualquer porta e qualquer path)
+      if (isDevelopment) {
+        const isLocalhost = origin.startsWith('http://localhost') || 
+                           origin.startsWith('http://127.0.0.1') ||
+                           origin.startsWith('https://localhost') ||
+                           origin.startsWith('https://127.0.0.1');
+        
+        if (isLocalhost) {
+          return callback(null, true);
+        }
+      }
+      
+      // Verificar se a origem está na lista permitida
+      if (corsOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      
+      console.log(`[CORS] ❌ Origem bloqueada: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    },
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type', 
+      'Authorization', 
+      'X-Request-Id', 
+      'Accept', 
+      'Origin', 
+      'X-Requested-With',
+      'Access-Control-Request-Method',
+      'Access-Control-Request-Headers'
+    ],
+    exposedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
     credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+    maxAge: 86400, // 24 horas
   });
 
   // Log das configurações de CORS para debug
   console.log('🔧 Configuração de CORS:');
   console.log('NODE_ENV:', process.env.NODE_ENV);
+  console.log('isDevelopment:', isDevelopment);
   console.log('CORS Origins permitidos:', corsOrigins);
+
+  // Middleware adicional para garantir que CORS funcione em todas as requisições
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const origin = req.headers.origin;
+    
+    // Se for requisição OPTIONS (preflight), responder imediatamente
+    if (req.method === 'OPTIONS') {
+      console.log(`[CORS] Preflight request de: ${origin || 'null'}`);
+      
+      // Permitir todas as origens localhost em desenvolvimento
+      if (isDevelopment && origin && (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1'))) {
+        res.header('Access-Control-Allow-Origin', origin);
+        res.header('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
+        res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Request-Id, Accept, Origin, X-Requested-With');
+        res.header('Access-Control-Allow-Credentials', 'true');
+        res.header('Access-Control-Max-Age', '86400');
+        return res.status(204).send();
+      }
+    }
+    
+    next();
+  });
 
   // Configuração de prefixo global
   app.setGlobalPrefix('api');
