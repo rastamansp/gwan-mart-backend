@@ -17,7 +17,7 @@ export class WebFormatterService {
     @Inject('ILogger')
     private readonly logger: ILogger,
   ) {
-    this.frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'https://litoralimoveis.com.br/';
+    this.frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'https://mart.gwan.com.br/';
   }
 
   /**

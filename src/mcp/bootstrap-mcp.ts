@@ -33,8 +33,8 @@ export async function bootstrapMcp() {
 
   // Configuração do Swagger
   const config = new DocumentBuilder()
-    .setTitle('Gwan Shop API')
-    .setDescription('API da plataforma de eventos e venda de ingressos')
+    .setTitle('Gwan Mart API')
+    .setDescription('API da plataforma Gwan Mart - E-commerce completo para venda de produtos')
     .setVersion('1.0')
     .addBearerAuth()
     .build();

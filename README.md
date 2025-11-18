@@ -1,18 +1,19 @@
-# 🏠 Litoral Imóveis Backend
+# 🛒 Gwan Mart Backend
 
-Backend da plataforma Litoral Imóveis - Corretora de locação e venda de imóveis, construído com NestJS e TypeScript, seguindo os princípios de **Clean Architecture** e **SOLID**.
+Backend da plataforma Gwan Mart - E-commerce completo para venda de produtos, construído com NestJS e TypeScript, seguindo os princípios de **Clean Architecture** e **SOLID**.
 
 ## 🚀 Funcionalidades
 
-- **Gestão de Imóveis**: Sistema completo para gerenciamento de imóveis (em desenvolvimento)
+- **Gestão de Produtos**: Sistema completo para gerenciamento de produtos, categorias, estoque e preços
 - **Autenticação**: JWT com Passport e roles (USER, ORGANIZER, ADMIN)
-- **Chatbot Inteligente**: Agente conversacional via OpenAI integrado com MCP para atendimento sobre imóveis
+- **Chatbot Inteligente**: Agente conversacional via OpenAI integrado com MCP para atendimento sobre produtos
 - **MCP Server**: Model Context Protocol para integração com IA
 - **Administração**: Dashboard administrativo
 - **Logging Estruturado**: Sistema de logs no formato NestJS
 - **Documentação Completa**: Swagger + Mermaid + Markdown
 - **Migrações Automáticas**: TypeORM migrations para versionamento do banco
 - **Integração WhatsApp**: Webhook para recebimento de mensagens
+- **Busca Vetorial**: Busca semântica de produtos usando embeddings OpenAI
 
 ## 🛠️ Stack Tecnológica
 
@@ -60,8 +61,8 @@ Backend da plataforma Litoral Imóveis - Corretora de locação e venda de imóv
 ### 1. Clone o Repositório
 
 ```bash
-git clone https://github.com/seu-usuario/litoral-imoveis-backend.git
-cd litoral-imoveis-backend
+git clone https://github.com/rastamansp/gwan-mart-backend.git
+cd gwan-mart-backend
 ```
 
 ### 2. Instale as Dependências
@@ -88,7 +89,7 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=postgres
-DB_NAME=litoral_imoveis
+DB_NAME=gwan_mart
 
 # JWT
 JWT_SECRET=your-super-secret-jwt-key-change-in-production
@@ -157,6 +158,7 @@ src/
 │   ├── chat/                        # Chatbot inteligente
 │   ├── whatsapp-webhook/            # Webhook do WhatsApp
 │   ├── mcp/                         # Servidor MCP
+│   ├── products/                    # Gestão de produtos
 │   └── health/                      # Health check
 ├── config/                           # Configurações
 │   ├── typeorm.config.ts            # Config TypeORM
@@ -255,7 +257,7 @@ Cada módulo possui um arquivo `.http` para facilitar testes via REST Client:
 ### Login
 POST http://localhost:3001/api/auth/login
 {
-  "email": "admin@litoralimoveis.com.br",
+  "email": "admin@gwan.com.br",
   "password": "password"
 }
 ```
@@ -277,12 +279,11 @@ POST http://localhost:3001/api/auth/login
 
 **Uso:**
 ```http
-### Chat - Consulta sobre imóveis
+### Chat - Consulta sobre produtos
 POST http://localhost:3001/api/chat
 {
-  "message": "Quais imóveis estão disponíveis para locação em Florianópolis?",
+  "message": "Liste produtos de eletrônicos",
   "userCtx": {
-    "city": "Florianópolis",
     "language": "pt-BR"
   },
   "channel": "web"
@@ -293,9 +294,19 @@ POST http://localhost:3001/api/chat
 **Endpoints disponíveis:**
 - `GET /api/health` - Health check
 
-#### 6. MCP Tools (`src/mcp/`)
+#### 6. Produtos (`src/products/products.http`)
+**Endpoints disponíveis:**
+- `GET /api/products` - Listar produtos com filtros
+- `GET /api/products/:code` - Obter produto por código
+- `GET /api/products/featured` - Listar produtos em destaque
+- `POST /api/products` - Criar produto (admin)
+- `PUT /api/products/:id` - Atualizar produto (admin)
+- `DELETE /api/products/:id` - Deletar produto (admin)
+
+#### 7. MCP Tools (`src/mcp/`)
 **APIs MCP expostas:**
-- Ferramentas para consulta de imóveis (em desenvolvimento)
+- `list_products` - Lista produtos com filtros opcionais
+- `get_product_by_code` - Obtém detalhes de um produto específico
 
 **Uso:**
 ```bash
@@ -306,10 +317,10 @@ echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}' | npm run start:mcp:s
 GET http://localhost:3001/api/mcp/tools
 POST http://localhost:3001/api/mcp/tools/call
 {
-  "name": "search_properties",
+  "name": "list_products",
   "arguments": {
-    "city": "Florianópolis",
-    "type": "rent"
+    "category": "Eletrônicos",
+    "limit": 5
   }
 }
 ```
@@ -319,8 +330,9 @@ POST http://localhost:3001/api/mcp/tools/call
 ### Funcionalidades
 
 O chatbot utiliza **OpenAI GPT** com integração **MCP** para:
-- Consultas sobre imóveis disponíveis
-- Informações sobre locação e venda
+- Consultas sobre produtos disponíveis
+- Busca de produtos por categoria, subcategoria, preço e texto
+- Detalhes de produtos específicos por código
 - Sugestões baseadas em contexto do usuário
 - Integração WhatsApp com mensagens formatadas
 
@@ -385,10 +397,10 @@ cp env.example .env
 docker-compose up -d
 
 # 3. Executar migrações
-docker exec -it litoral-imoveis-backend npm run typeorm:migration:run
+docker exec -it gwan-mart-backend npm run typeorm:migration:run
 
 # 4. Criar admin
-docker exec -it litoral-imoveis-backend npm run admin:create
+docker exec -it gwan-mart-backend npm run admin:create
 ```
 
 ### Deploy com Portainer
@@ -495,19 +507,22 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 ## 🆘 Suporte
 
 - **Documentação**: [docs/README.md](./docs/README.md)
-- **Issues**: [GitHub Issues](https://github.com/seu-usuario/litoral-imoveis-backend/issues)
+- **Issues**: [GitHub Issues](https://github.com/rastamansp/gwan-mart-backend/issues)
 
 ## 🎯 Roadmap
 
-- [ ] Implementar módulo de imóveis completo
-- [ ] Adicionar endpoints MCP para consulta de imóveis
+- [x] Implementar módulo de produtos completo
+- [x] Adicionar endpoints MCP para consulta de produtos
+- [ ] Implementar carrinho de compras
+- [ ] Implementar sistema de checkout
+- [ ] Integração com sistemas de pagamento (Stripe)
 - [ ] Implementar cache distribuído
 - [ ] Adicionar suporte a WebSockets
 - [ ] Implementar sistema de notificações
 - [ ] Adicionar suporte a múltiplos idiomas
-- [ ] Integração com sistemas de pagamento
-- [ ] Sistema de agendamento de visitas
+- [ ] Sistema de avaliações e reviews de produtos
+- [ ] Gestão de pedidos e histórico
 
 ---
 
-**🏠 Backend da plataforma Litoral Imóveis!**
+**🛒 Backend da plataforma Gwan Mart!**

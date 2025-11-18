@@ -18,7 +18,7 @@ export class DatabaseSeeder {
     // Criar usuário admin
     await this.createAdminUser();
     
-    // Criar usuário corretor
+    // Criar usuário vendedor
     await this.createCorretorUser();
     
     // Criar usuário comum
@@ -32,14 +32,14 @@ export class DatabaseSeeder {
 
   private async createAdminUser(): Promise<void> {
     const existingAdmin = await this.userRepository.findOne({ 
-      where: { email: 'admin@gwanshop.com' } 
+      where: { email: 'admin@gwan.com.br' } 
     });
     
     if (!existingAdmin) {
       const adminUser = User.create(
         'admin-user-id',
         'Administrador do Sistema',
-        'admin@gwanshop.com',
+        'admin@gwan.com.br',
         await bcrypt.hash('admin123', 10),
         '+5511999999999',
         UserRole.ADMIN,
@@ -52,34 +52,34 @@ export class DatabaseSeeder {
 
   private async createCorretorUser(): Promise<void> {
     const existingCorretor = await this.userRepository.findOne({ 
-      where: { email: 'corretor@litoralimoveis.com.br' } 
+      where: { email: 'vendedor@gwan.com.br' } 
     });
     
     if (!existingCorretor) {
       const corretorUser = User.create(
-        'corretor-user-id',
-        'João Silva Corretor',
-        'corretor@litoralimoveis.com.br',
+        'vendedor-user-id',
+        'João Silva Vendedor',
+        'vendedor@gwan.com.br',
         await bcrypt.hash('corretor123', 10),
         '+5511888888888',
         UserRole.CORRETOR,
       );
       
       await this.userRepository.save(corretorUser);
-      console.log('👤 Usuário corretor criado');
+      console.log('👤 Usuário vendedor criado');
     }
   }
 
   private async createRegularUser(): Promise<void> {
     const existingUser = await this.userRepository.findOne({ 
-      where: { email: 'usuario@gwanshop.com' } 
+      where: { email: 'usuario@gwan.com.br' } 
     });
     
     if (!existingUser) {
       const regularUser = User.create(
         'regular-user-id',
         'Maria Santos',
-        'usuario@gwanshop.com',
+        'usuario@gwan.com.br',
         await bcrypt.hash('usuario123', 10),
         '+5511777777777',
         UserRole.USER,
