@@ -1,7 +1,0 @@
-export enum PropertyType {
-  CASA = 'CASA',
-  APARTAMENTO = 'APARTAMENTO',
-  TERRENO = 'TERRENO',
-  SALA_COMERCIAL = 'SALA_COMERCIAL',
-}
-

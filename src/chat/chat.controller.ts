@@ -26,30 +26,34 @@ export class ChatController {
 
   @Post()
   @HttpCode(200)
-  @ApiOperation({ summary: 'Agente conversacional (OpenAI + MCP bridge) - Consulta imóveis' })
+  @ApiOperation({ summary: 'Agente conversacional (OpenAI + MCP bridge) - Consulta produtos' })
   @ApiBody({
     description: 'Mensagem do usuário e contexto opcional',
     type: ChatRequestDto,
     examples: {
-      listaImoveis: {
-        summary: 'Listar imóveis em uma cidade',
-        value: { message: 'Liste imóveis em São Sebastião' },
+      listaProdutos: {
+        summary: 'Listar produtos por categoria',
+        value: { message: 'Liste produtos de eletrônicos' },
       },
-      imoveisPorTipo: {
-        summary: 'Buscar imóveis por tipo',
-        value: { message: 'Mostre casas à venda' },
+      produtosPorSubcategoria: {
+        summary: 'Buscar produtos por subcategoria',
+        value: { message: 'Mostre smartphones disponíveis' },
       },
-      imoveisPorPreco: {
-        summary: 'Buscar imóveis por faixa de preço',
-        value: { message: 'Busque imóveis entre 300 mil e 500 mil' },
+      produtosPorPreco: {
+        summary: 'Buscar produtos por faixa de preço',
+        value: { message: 'Busque produtos entre 500 e 1000 reais' },
       },
-      detalhesImovel: {
-        summary: 'Detalhes de um imóvel específico',
-        value: { message: 'Mostre os detalhes do imóvel d4da01e3-2f5a-4edf-8fa3-71f262e04eb5' },
+      detalhesProduto: {
+        summary: 'Detalhes de um produto específico',
+        value: { message: 'Mostre os detalhes do produto PROD-001' },
       },
-      imoveisComComodidades: {
-        summary: 'Buscar imóveis com comodidades',
-        value: { message: 'Busque casas com piscina em Maresias' },
+      buscaProduto: {
+        summary: 'Buscar produto por texto',
+        value: { message: 'Procure por notebook' },
+      },
+      produtosEmDestaque: {
+        summary: 'Listar produtos em destaque',
+        value: { message: 'Mostre produtos em promoção' },
       },
     },
   })

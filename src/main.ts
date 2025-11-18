@@ -79,6 +79,9 @@ export async function bootstrap() {
     whitelist: true,
     forbidNonWhitelisted: true,
     transform: true,
+    transformOptions: {
+      enableImplicitConversion: true, // Converte automaticamente strings para números/booleanos quando possível
+    },
   }));
 
   // Configuração de Exception Filters globais

@@ -2,8 +2,8 @@
  * Tipos de resposta estruturada para formatação por canal
  */
 export type ResponseType = 
-  | 'property_list'
-  | 'property_detail'
+  | 'product_list'
+  | 'product_detail'
   | 'generic';
 
 export interface PaginationInfo {
@@ -27,17 +27,6 @@ export interface FormattedResponse {
     url: string;
     caption?: string;
   }[];
-}
-
-export interface PropertyListResponse {
-  type: 'property_list';
-  properties: any[];
-  pagination: PaginationInfo;
-}
-
-export interface PropertyDetailResponse {
-  type: 'property_detail';
-  property: any;
 }
 
 export interface SuggestionsResponse {

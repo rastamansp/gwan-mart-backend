@@ -1,11 +1,11 @@
 services:
-  gwan-imoveis-backend:
+  gwan-mart-backend:
     build:
       context: .
       # Dockerfile padrão - sem migrations (para produção com banco existente)
       # Use Dockerfile.with-migrations se precisar executar migrations automaticamente
       dockerfile: Dockerfile
-    container_name: gwan-imoveis-backend
+    container_name: gwan-mart-backend
     restart: unless-stopped
     environment:
       # Configurações básicas
@@ -13,7 +13,7 @@ services:
       - PORT=3001
       
       # API Base URL
-      - API_BASE_URL=https://api-imoveis.gwan.com.br
+      - API_BASE_URL=https://api-mart.gwan.com.br
       
       # Database (usando DATABASE_URL completa)
       - DATABASE_URL=${DATABASE_URL}
@@ -25,7 +25,7 @@ services:
       - CORS_ORIGINS=${CORS_ORIGINS}
       
       # MCP Server
-      - MCP_BASE_URL=https://api-imoveis.gwan.com.br
+      - MCP_BASE_URL=https://api-mart.gwan.com.br
       - MCP_PORT_SSE=3002
       - MCP_AUTH_TOKEN=${MCP_AUTH_TOKEN}
       
@@ -66,22 +66,22 @@ services:
       start_period: 40s
       
     labels:
-      # Traefik configuration for api-imoveis.gwan.com.br
+      # Traefik configuration for api-mart.gwan.com.br
       - "traefik.enable=true"
       
       # HTTP Router (redireciona para HTTPS)
-      - "traefik.http.routers.gwan-imoveis-backend-http.rule=Host(`api-imoveis.gwan.com.br`)"
-      - "traefik.http.routers.gwan-imoveis-backend-http.entrypoints=web"
-      - "traefik.http.routers.gwan-imoveis-backend-http.middlewares=redirect-to-https"
+      - "traefik.http.routers.gwan-mart-backend-http.rule=Host(`api-mart.gwan.com.br`)"
+      - "traefik.http.routers.gwan-mart-backend-http.entrypoints=web"
+      - "traefik.http.routers.gwan-mart-backend-http.middlewares=redirect-to-https"
       
       # HTTPS Router
-      - "traefik.http.routers.gwan-imoveis-backend.rule=Host(`api-imoveis.gwan.com.br`)"
-      - "traefik.http.routers.gwan-imoveis-backend.entrypoints=websecure"
-      - "traefik.http.routers.gwan-imoveis-backend.tls=true"
-      - "traefik.http.routers.gwan-imoveis-backend.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.gwan-mart-backend.rule=Host(`api-mart.gwan.com.br`)"
+      - "traefik.http.routers.gwan-mart-backend.entrypoints=websecure"
+      - "traefik.http.routers.gwan-mart-backend.tls=true"
+      - "traefik.http.routers.gwan-mart-backend.tls.certresolver=letsencrypt"
       
       # Service configuration
-      - "traefik.http.services.gwan-imoveis-backend.loadbalancer.server.port=3001"
+      - "traefik.http.services.gwan-mart-backend.loadbalancer.server.port=3001"
       - "traefik.docker.network=gwan"
       
       # Middleware para redirecionamento HTTP -> HTTPS

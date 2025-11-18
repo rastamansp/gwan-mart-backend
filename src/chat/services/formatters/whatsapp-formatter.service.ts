@@ -5,7 +5,6 @@ import { ResponseType, FormattedResponse } from '../../interfaces/chat-response.
 import { PaginationService } from './pagination.service';
 import { SuggestionsService } from '../suggestions.service';
 import { ILogger } from '../../../shared/application/interfaces/logger.interface';
-// Imports removidos - serão atualizados quando o chat for adaptado para imóveis
 
 @Injectable()
 export class WhatsAppFormatterService {
@@ -32,11 +31,11 @@ export class WhatsAppFormatterService {
     
     try {
       switch (responseType) {
-        case 'property_list':
-          return await this.formatPropertyList(rawResponse, rawData, toolsUsed);
+        case 'product_list':
+          return await this.formatProductList(rawResponse, rawData, toolsUsed);
         
-        case 'property_detail':
-          return await this.formatPropertyDetail(rawResponse, rawData, toolsUsed);
+        case 'product_detail':
+          return await this.formatProductDetail(rawResponse, rawData, toolsUsed);
         
         default:
           return this.formatGeneric(rawResponse, toolsUsed);
@@ -59,12 +58,12 @@ export class WhatsAppFormatterService {
 
     const lastTool = toolsUsed[toolsUsed.length - 1].name.toLowerCase();
     
-    if (lastTool.includes('list_properties')) {
-      return 'property_list';
+    if (lastTool.includes('list_products')) {
+      return 'product_list';
     }
     
-    if (lastTool.includes('get_property_by_id') || lastTool.includes('property_detail')) {
-      return 'property_detail';
+    if (lastTool.includes('get_product_by_code') || lastTool.includes('product_detail')) {
+      return 'product_detail';
     }
     
     return 'generic';
@@ -79,149 +78,192 @@ export class WhatsAppFormatterService {
     };
   }
 
-  private async formatPropertyList(rawResponse: string, rawData: any, toolsUsed: any[]): Promise<FormattedResponse> {
-    let properties: any[] = [];
+  private async formatProductList(rawResponse: string, rawData: any, toolsUsed: any[]): Promise<FormattedResponse> {
+    // Log debug: estrutura completa do rawData
+    this.logger.debug('[WhatsAppFormatter] formatProductList - rawData structure', {
+      rawDataType: typeof rawData,
+      rawDataKeys: rawData ? Object.keys(rawData) : [],
+      hasData: !!rawData?.data,
+      dataKeys: rawData?.data ? Object.keys(rawData.data) : [],
+      hasDataProducts: !!rawData?.data?.products,
+      hasProducts: !!rawData?.products,
+      isArray: Array.isArray(rawData),
+      rawDataPreview: rawData ? JSON.stringify(rawData).substring(0, 500) : 'null',
+    });
+
+    // Extrair produtos da resposta
+    // O extractRawDataFromToolResults pode retornar um array: [{products: [...], total: ..., totalPages: ...}]
+    // Ou um objeto: { status: "success", data: { products: [...] } }
+    let products: any[] = [];
+    let dataSource: any = null;
     
-    if (rawData && Array.isArray(rawData)) {
-      properties = rawData;
-    } else if (rawData?.properties) {
-      properties = Array.isArray(rawData.properties) ? rawData.properties : [rawData.properties];
-    } else if (rawData?.data) {
-      properties = Array.isArray(rawData.data) ? rawData.data : [rawData.data];
+    // Se rawData é um array, pegar o primeiro elemento
+    if (Array.isArray(rawData) && rawData.length > 0) {
+      dataSource = rawData[0];
+      this.logger.debug('[WhatsAppFormatter] formatProductList - rawData is array, using first element', {
+        firstElementKeys: Object.keys(dataSource),
+        hasProducts: !!dataSource?.products,
+      });
+    } else {
+      dataSource = rawData;
+    }
+    
+    // Tentar extrair produtos de várias estruturas possíveis
+    if (dataSource?.data?.products && Array.isArray(dataSource.data.products)) {
+      products = dataSource.data.products;
+      this.logger.debug('[WhatsAppFormatter] formatProductList - Found products in dataSource.data.products', {
+        count: products.length,
+        firstProduct: products[0] ? {
+          id: products[0].id,
+          code: products[0].code,
+          name: products[0].name,
+        } : null,
+      });
+    } else if (dataSource?.products && Array.isArray(dataSource.products)) {
+      products = dataSource.products;
+      this.logger.debug('[WhatsAppFormatter] formatProductList - Found products in dataSource.products', {
+        count: products.length,
+        firstProduct: products[0] ? {
+          id: products[0].id,
+          code: products[0].code,
+          name: products[0].name,
+        } : null,
+      });
+    } else {
+      this.logger.warn('[WhatsAppFormatter] formatProductList - No products found in rawData', {
+        rawDataStructure: rawData ? JSON.stringify(rawData).substring(0, 1000) : 'null',
+        dataSourceKeys: dataSource ? Object.keys(dataSource) : [],
+      });
     }
 
-    // Limitar quantidade de propriedades
-    const limitedProperties = properties.slice(0, this.defaultEventLimit);
+    // Limitar quantidade de produtos para WhatsApp
+    const limitedProducts = products.slice(0, this.defaultEventLimit);
     
-    if (limitedProperties.length === 0) {
+    if (limitedProducts.length === 0) {
       return {
-        answer: '❌ Não encontrei imóveis cadastrados no momento.',
+        answer: '❌ Não encontrei produtos cadastrados no momento.',
         data: {
-          type: 'property_list',
+          type: 'product_list',
           items: [],
         },
       };
     }
 
-    // Formatar lista de propriedades
-    let message = `🏠 *Encontrei ${properties.length} imóvel(is):*\n\n`;
+    // Formatar lista de produtos
+    let message = `🛍️ *Encontrei ${products.length} produto(s):*\n\n`;
     
-    limitedProperties.forEach((p: any, index: number) => {
-      const price = p.price ? `R$ ${Number(p.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Preço sob consulta';
-      const type = p.type || 'Imóvel';
-      const purpose = p.purpose ? (p.purpose === 'RENT' ? 'Aluguel' : p.purpose === 'SALE' ? 'Venda' : 'Investimento') : '';
-      const city = p.city || '';
-      const neighborhood = p.neighborhood || '';
-      const area = p.area ? `${p.area}m²` : '';
-      const bedrooms = p.bedrooms ? `${p.bedrooms} quarto(s)` : '';
-      const bathrooms = p.bathrooms ? `${p.bathrooms} banheiro(s)` : '';
+    limitedProducts.forEach((p: any, index: number) => {
+      const originalPrice = p.originalPrice ? `R$ ${Number(p.originalPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Preço sob consulta';
+      const promotionalPrice = p.promotionalPrice ? `R$ ${Number(p.promotionalPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : null;
+      const discount = p.discountPercentage > 0 ? ` (${p.discountPercentage}% OFF)` : '';
+      const category = p.category || '';
+      const subcategory = p.subcategory || '';
       
-      message += `${index + 1}. *${p.title || 'Sem título'}*\n`;
-      message += `   ${type}${purpose ? ` - ${purpose}` : ''}${city ? ` - ${city}` : ''}${neighborhood ? `, ${neighborhood}` : ''}\n`;
-      message += `   💰 ${price}\n`;
-      if (area || bedrooms || bathrooms) {
-        const details = [area, bedrooms, bathrooms].filter(Boolean).join(' • ');
-        message += `   📐 ${details}\n`;
+      message += `${index + 1}. *${p.name || 'Produto sem nome'}*\n`;
+      message += `   Código: ${p.code || 'N/A'}\n`;
+      if (category) {
+        message += `   ${category}${subcategory ? ` - ${subcategory}` : ''}\n`;
+      }
+      if (promotionalPrice) {
+        message += `   💰 ~~${originalPrice}~~ ${promotionalPrice}${discount}\n`;
+      } else {
+        message += `   💰 ${originalPrice}\n`;
+      }
+      if (p.stock !== undefined) {
+        const stockStatus = p.stock > 0 ? `✅ ${p.stock} unidades` : '❌ Fora de estoque';
+        message += `   📦 ${stockStatus}\n`;
+      }
+      const rating = Number(p.averageRating) || 0;
+      if (rating > 0) {
+        message += `   ⭐ ${rating.toFixed(1)} (${p.totalReviews || 0} avaliações)\n`;
       }
       
-      // Amenities
-      const amenities: string[] = [];
-      if (p.hasPool) amenities.push('🏊 Piscina');
-      if (p.hasJacuzzi) amenities.push('💆 Hidromassagem');
-      if (p.oceanFront) amenities.push('🌊 Frente Mar');
-      if (p.hasGarden) amenities.push('🌳 Jardim');
-      if (p.hasGourmetArea) amenities.push('🍖 Área Gourmet');
-      if (p.furnished) amenities.push('🛋️ Mobiliado');
-      
-      if (amenities.length > 0) {
-        message += `   ${amenities.join(' • ')}\n`;
-      }
-      
-      message += `   🔗 ${this.frontendUrl}imoveis/${p.id}\n\n`;
+      message += `   🔗 ${this.frontendUrl}products/${p.code}\n\n`;
     });
 
-    if (properties.length > this.defaultEventLimit) {
-      message += `\n_... e mais ${properties.length - this.defaultEventLimit} imóvel(is)_`;
+    if (products.length > this.defaultEventLimit) {
+      message += `\n_... e mais ${products.length - this.defaultEventLimit} produto(s)_`;
     }
 
     return {
       answer: message,
       data: {
-        type: 'property_list',
-        items: limitedProperties,
-        rawData: properties,
+        type: 'product_list',
+        items: limitedProducts,
+        rawData: products,
       },
     };
   }
 
-  private async formatPropertyDetail(rawResponse: string, rawData: any, toolsUsed: any[]): Promise<FormattedResponse> {
-    const property = rawData && !Array.isArray(rawData) ? rawData : (rawData?.[0] || rawData?.data?.[0] || rawData?.property);
+  private async formatProductDetail(rawResponse: string, rawData: any, toolsUsed: any[]): Promise<FormattedResponse> {
+    // Extrair produto da resposta
+    // A API retorna { status: "success", data: { ...product } }
+    // O MCP controller retorna result.data diretamente, então rawData = { status: "success", data: { ...product } }
+    const product = rawData?.data || rawData?.product || (Array.isArray(rawData) ? rawData[0] : rawData);
     
-    if (!property) {
+    if (!product) {
       return this.formatGeneric(rawResponse, toolsUsed);
     }
 
-    // Formatar detalhes completos do imóvel
-    let message = `🏠 *${property.title || 'Imóvel'}*\n\n`;
+    // Formatar detalhes completos do produto
+    let message = `🛍️ *${product.name || 'Produto'}*\n\n`;
     
-    const price = property.price ? `R$ ${Number(property.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Preço sob consulta';
-    const type = property.type || 'Imóvel';
-    const purpose = property.purpose ? (property.purpose === 'RENT' ? 'Aluguel' : property.purpose === 'SALE' ? 'Venda' : 'Investimento') : '';
-    const city = property.city || '';
-    const neighborhood = property.neighborhood || '';
+    const originalPrice = product.originalPrice ? `R$ ${Number(product.originalPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Preço sob consulta';
+    const promotionalPrice = product.promotionalPrice ? `R$ ${Number(product.promotionalPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : null;
+    const discount = product.discountPercentage > 0 ? ` (${product.discountPercentage}% OFF)` : '';
+    const category = product.category || '';
+    const subcategory = product.subcategory || '';
     
-    message += `💰 *Preço:* ${price}\n`;
-    message += `📍 *Localização:* ${type}${purpose ? ` - ${purpose}` : ''}${city ? ` - ${city}` : ''}${neighborhood ? `, ${neighborhood}` : ''}\n\n`;
-    
-    // Características
-    if (property.area || property.bedrooms || property.bathrooms || property.garageSpaces) {
-      message += `📐 *Características:*\n`;
-      if (property.area) message += `   • Área: ${property.area}m²\n`;
-      if (property.bedrooms) message += `   • ${property.bedrooms} quarto(s)\n`;
-      if (property.bathrooms) message += `   • ${property.bathrooms} banheiro(s)\n`;
-      if (property.garageSpaces) message += `   • ${property.garageSpaces} vaga(s) de garagem\n`;
-      message += `\n`;
+    if (promotionalPrice) {
+      message += `💰 *Preço:* ~~${originalPrice}~~ ${promotionalPrice}${discount}\n`;
+    } else {
+      message += `💰 *Preço:* ${originalPrice}\n`;
+    }
+    message += `📋 *Código:* ${product.code || 'N/A'}\n`;
+    if (category) {
+      message += `📂 *Categoria:* ${category}${subcategory ? ` - ${subcategory}` : ''}\n`;
     }
     
-    // Amenities
-    const amenities: string[] = [];
-    if (property.hasPool) amenities.push('🏊 Piscina');
-    if (property.hasJacuzzi) amenities.push('💆 Hidromassagem');
-    if (property.oceanFront) amenities.push('🌊 Frente Mar');
-    if (property.hasGarden) amenities.push('🌳 Jardim');
-    if (property.hasGourmetArea) amenities.push('🍖 Área Gourmet');
-    if (property.furnished) amenities.push('🛋️ Mobiliado');
-    
-    if (amenities.length > 0) {
-      message += `✨ *Comodidades:*\n${amenities.join(' • ')}\n\n`;
+    // Estoque
+    if (product.stock !== undefined) {
+      const stockStatus = product.stock > 0 ? `✅ ${product.stock} unidades disponíveis` : '❌ Fora de estoque';
+      message += `📦 *Estoque:* ${stockStatus}\n`;
     }
+    
+    // Avaliação
+    const rating = Number(product.averageRating) || 0;
+    if (rating > 0) {
+      message += `⭐ *Avaliação:* ${rating.toFixed(1)} (${product.totalReviews || 0} avaliações)\n`;
+    }
+    
+    // Fornecedor
+    if (product.supplier) {
+      message += `🏢 *Fornecedor:* ${product.supplier}\n`;
+    }
+    
+    message += `\n`;
     
     // Descrição
-    if (property.description) {
-      const description = property.description.length > 200 
-        ? property.description.substring(0, 200) + '...' 
-        : property.description;
+    if (product.description) {
+      const description = product.description.length > 300 
+        ? product.description.substring(0, 300) + '...' 
+        : product.description;
       message += `📝 *Descrição:*\n${description}\n\n`;
     }
     
-    // Realtor
-    if (property.realtor) {
-      message += `👤 *Realtor:* ${property.realtor.name || property.realtor.email}\n\n`;
-    }
-    
     // Link
-    message += `🔗 ${this.frontendUrl}imoveis/${property.id}`;
+    message += `🔗 ${this.frontendUrl}products/${product.code}`;
 
     return {
       answer: message,
       data: {
-        type: 'property_detail',
-        items: [property],
-        rawData: property,
+        type: 'product_detail',
+        items: [product],
+        rawData: product,
       },
-      media: property.coverImageUrl ? [{
+      media: (product.realImage || product.thumbnail) ? [{
         type: 'image' as const,
-        url: property.coverImageUrl,
+        url: product.realImage || product.thumbnail,
         caption: message.length > this.maxCaptionLength 
           ? message.substring(0, this.maxCaptionLength - 3) + '...' 
           : message,
@@ -229,4 +271,3 @@ export class WhatsAppFormatterService {
     };
   }
 }
-

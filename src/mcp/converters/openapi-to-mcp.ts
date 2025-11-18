@@ -12,17 +12,42 @@ function paramsToJsonSchema(params: ParameterObject[]): any {
   const required: string[] = [];
 
   for (const param of params) {
+    // Determinar o tipo do parâmetro
+    let paramType = 'string'; // padrão
+    if (param.schema) {
+      // Se o schema define o tipo, usar ele
+      paramType = param.schema.type || 'string';
+    } else if (param.type) {
+      // Fallback para type direto
+      paramType = param.type;
+    }
+
+    const property: any = {
+      type: paramType,
+      description: param.description || `${param.in} parameter: ${param.name}`,
+    };
+
+    // Adicionar constraints se existirem
+    if (param.schema) {
+      if (param.schema.minimum !== undefined) {
+        property.minimum = param.schema.minimum;
+      }
+      if (param.schema.maximum !== undefined) {
+        property.maximum = param.schema.maximum;
+      }
+      if (param.schema.enum) {
+        property.enum = param.schema.enum;
+      }
+      if (param.schema.example !== undefined) {
+        property.example = param.schema.example;
+      }
+    }
+
     if (param.in === 'path') {
-      properties[param.name] = {
-        type: 'string',
-        description: param.description || `Path parameter: ${param.name}`,
-      };
+      properties[param.name] = property;
       required.push(param.name);
     } else if (param.in === 'query') {
-      properties[param.name] = {
-        type: 'string',
-        description: param.description || `Query parameter: ${param.name}`,
-      };
+      properties[param.name] = property;
       if (param.required) {
         required.push(param.name);
       }
@@ -98,19 +123,25 @@ export function openapiToMcpTools(document: OpenAPIObject, baseUrl: string): Too
       const paramSchema = paramsToJsonSchema(op.parameters || []);
       const bodySchema = requestBodyToJsonSchema(op.requestBody);
 
-      // Combinar schemas
+      // Combinar properties, dando prioridade ao pathSchema (path params têm precedência)
+      const combinedProperties = {
+        ...paramSchema.properties,
+        ...pathSchema.properties, // Path params sobrescrevem query params com mesmo nome
+        ...(method !== 'get' ? bodySchema.properties : {}),
+      };
+
+      // Combinar required, removendo duplicatas
+      const requiredSet = new Set<string>();
+      (pathSchema.required || []).forEach((r: string) => requiredSet.add(r));
+      (paramSchema.required || []).forEach((r: string) => requiredSet.add(r));
+      if (method !== 'get' && bodySchema.required) {
+        bodySchema.required.forEach((r: string) => requiredSet.add(r));
+      }
+
       const inputSchema = {
         type: 'object',
-        properties: {
-          ...pathSchema.properties,
-          ...paramSchema.properties,
-          ...(method !== 'get' ? bodySchema.properties : {}),
-        },
-        required: [
-          ...(pathSchema.required || []),
-          ...(paramSchema.required || []),
-          ...(method !== 'get' ? bodySchema.required || [] : []),
-        ],
+        properties: combinedProperties,
+        required: Array.from(requiredSet),
       };
 
       tools.push({

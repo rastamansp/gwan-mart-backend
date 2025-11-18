@@ -8,28 +8,28 @@ export class SuggestionsService {
    */
   generateSuggestions(responseType: ResponseType, context?: any): string[] {
     switch (responseType) {
-      case 'property_list':
+      case 'product_list':
         return [
-          'Ver detalhes de um imóvel',
-          'Filtrar por tipo',
+          'Ver detalhes de um produto',
+          'Filtrar por categoria',
           'Filtrar por preço',
-          'Buscar imóveis em outra cidade',
+          'Buscar produtos',
         ];
 
-      case 'property_detail':
+      case 'product_detail':
         return [
-          'Ver mais imagens',
-          'Ver outros imóveis do corretor',
-          'Buscar imóveis similares',
-          'Ver imóveis na mesma cidade',
+          'Ver outros produtos',
+          'Buscar produtos similares',
+          'Ver produtos da mesma categoria',
+          'Listar todos os produtos',
         ];
 
       default:
         return [
           'Como posso ajudar?',
-          'Listar imóveis disponíveis',
-          'Buscar imóveis por cidade',
-          'Ver imóveis por tipo',
+          'Ver produtos disponíveis',
+          'Buscar produtos',
+          'Ver categorias',
         ];
     }
   }
@@ -41,15 +41,20 @@ export class SuggestionsService {
     const baseSuggestions = this.generateSuggestions(responseType, data);
     
     // Adicionar sugestões específicas baseadas nos dados
-    if (responseType === 'property_list' && data?.properties?.length > 0) {
-      // Se houver imóveis, adicionar sugestão para ver detalhes do primeiro
-      if (data.properties[0]?.id) {
-        baseSuggestions.unshift(`Ver detalhes do imóvel "${data.properties[0].title || 'primeiro'}"`);
+    if (responseType === 'product_list' && data?.products?.length > 0) {
+      // Se houver produtos, adicionar sugestão para ver detalhes do primeiro
+      if (data.products[0]?.code) {
+        baseSuggestions.unshift(`Ver detalhes do produto "${data.products[0].name || data.products[0].code}"`);
       }
-    } else if (responseType === 'property_list' && Array.isArray(data) && data.length > 0) {
-      // Se data for um array direto de propriedades
-      if (data[0]?.id) {
-        baseSuggestions.unshift(`Ver detalhes do imóvel "${data[0].title || 'primeiro'}"`);
+    } else if (responseType === 'product_list' && Array.isArray(data) && data.length > 0) {
+      // Se data for um array direto de produtos
+      if (data[0]?.code) {
+        baseSuggestions.unshift(`Ver detalhes do produto "${data[0].name || data[0].code}"`);
+      }
+    } else if (responseType === 'product_detail' && data?.code) {
+      // Se for detalhe de produto, adicionar sugestão para buscar similares
+      if (data.category) {
+        baseSuggestions.unshift(`Ver outros produtos de ${data.category}`);
       }
     }
     

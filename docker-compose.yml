@@ -1,11 +1,11 @@
 version: '3.8'
 
 services:
-  gwan-events-backend:
+  gwan-mart-backend:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: gwan-events-backend
+    container_name: gwan-mart-backend
     restart: unless-stopped
     ports:
       - "${PORT:-3001}:3001"
@@ -36,13 +36,13 @@ services:
       - EVOLUTION_INSTANCE=${EVOLUTION_INSTANCE}
       - EVOLUTION_INSTANCE_URL=${EVOLUTION_INSTANCE_URL}
       - EVOLUTION_INSTANCE_NAME=${EVOLUTION_INSTANCE_NAME:-Gwan}
-      - API_BASE_URL=${API_BASE_URL:-https://api-events.gwan.com.br}
+      - API_BASE_URL=${API_BASE_URL:-https://api-mart.gwan.com.br}
       
       # CORS
       - CORS_ORIGINS=${CORS_ORIGINS}
       
       # MCP Server
-      - MCP_BASE_URL=${MCP_BASE_URL:-https://api-events.gwan.com.br}
+      - MCP_BASE_URL=${MCP_BASE_URL:-https://api-mart.gwan.com.br}
       - MCP_PORT_SSE=${MCP_PORT_SSE:-3002}
       - MCP_AUTH_TOKEN=${MCP_AUTH_TOKEN}
       
@@ -92,29 +92,29 @@ services:
       - "traefik.enable=true"
            
       # HTTPS Router
-      - "traefik.http.routers.gwan-events-backend.rule=Host(`api-events.gwan.com.br`)"
-      - "traefik.http.routers.gwan-events-backend.entrypoints=websecure"
-      - "traefik.http.routers.gwan-events-backend.tls=true"
-      - "traefik.http.routers.gwan-events-backend.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.gwan-mart-backend.rule=Host(`api-mart.gwan.com.br`)"
+      - "traefik.http.routers.gwan-mart-backend.entrypoints=websecure"
+      - "traefik.http.routers.gwan-mart-backend.tls=true"
+      - "traefik.http.routers.gwan-mart-backend.tls.certresolver=letsencrypt"
       
       # Service configuration
-      - "traefik.http.services.gwan-events-backend.loadbalancer.server.port=3001"
+      - "traefik.http.services.gwan-mart-backend.loadbalancer.server.port=3001"
       - "traefik.docker.network=gwan"
       
 
   # MCP Server SSE (opcional)
-  gwan-events-mcp:
+  gwan-mart-mcp:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: gwan-events-mcp
+    container_name: gwan-mart-mcp
     restart: unless-stopped
     command: ["npm", "run", "start:mcp:sse"]
     ports:
       - "${MCP_PORT_SSE:-3002}:3002"
     environment:
       - NODE_ENV=${NODE_ENV:-production}
-      - MCP_BASE_URL=${MCP_BASE_URL:-http://gwan-events-backend:3001}
+      - MCP_BASE_URL=${MCP_BASE_URL:-http://gwan-mart-backend:3001}
       - MCP_PORT_SSE=${MCP_PORT_SSE:-3002}
       - MCP_AUTH_TOKEN=${MCP_AUTH_TOKEN}
       - LOG_LEVEL=${LOG_LEVEL:-info}
@@ -130,7 +130,7 @@ services:
       - EVOLUTION_INSTANCE=${EVOLUTION_INSTANCE}
       - EVOLUTION_INSTANCE_URL=${EVOLUTION_INSTANCE_URL}
       - EVOLUTION_INSTANCE_NAME=${EVOLUTION_INSTANCE_NAME:-Gwan}
-      - API_BASE_URL=${API_BASE_URL:-https://api-events.gwan.com.br}
+      - API_BASE_URL=${API_BASE_URL:-https://api-mart.gwan.com.br}
       # JWT
       - JWT_SECRET=${JWT_SECRET}
       # Spotify Integration
@@ -143,7 +143,7 @@ services:
     networks:
       - gwan
     depends_on:
-      - gwan-events-backend
+      - gwan-mart-backend
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
       interval: 30s
@@ -152,10 +152,10 @@ services:
       start_period: 40s
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.gwan-events-mcp.rule=Host(`mcp-events.gwan.com.br`)"
-      - "traefik.http.routers.gwan-events-mcp.tls=true"
-      - "traefik.http.routers.gwan-events-mcp.tls.certresolver=letsencrypt"
-      - "traefik.http.services.gwan-events-mcp.loadbalancer.server.port=3002"
+      - "traefik.http.routers.gwan-mart-mcp.rule=Host(`mcp-mart.gwan.com.br`)"
+      - "traefik.http.routers.gwan-mart-mcp.tls=true"
+      - "traefik.http.routers.gwan-mart-mcp.tls.certresolver=letsencrypt"
+      - "traefik.http.services.gwan-mart-mcp.loadbalancer.server.port=3002"
 
 volumes:
   # postgres_data e redis_data removidos - não utilizados

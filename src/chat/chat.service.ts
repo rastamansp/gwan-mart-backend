@@ -55,7 +55,7 @@ export class ChatService {
       { role: 'user', content: this.normalizeUserMessage(message, userCtx) },
     ];
 
-    const tools = this.buildToolsSchema();
+    const tools = await this.buildToolsSchema();
     let iteration = 0;
     const toolsUsed: { name: string; arguments?: Record<string, unknown> }[] = [];
 
@@ -73,17 +73,16 @@ export class ChatService {
         const toolName = tc.function.name;
         const args = this.safeJsonParse(tc.function.arguments || '{}');
 
-        // Mapear alias do agente para o nome real da tool MCP
-        const mcpToolName = this.mapAgentToolToMcp(toolName);
-
-        // Validação preventiva de UUID quando a tool exige 'id'
-        if (mcpToolName === 'get_property_by_id') {
-          const candidateId = String((args as any)?.id || '');
-          if (!this.isValidUuid(candidateId)) {
-            const answer = 'ID de imóvel inválido. Forneça um UUID válido ou peça para listar imóveis para escolher um ID.';
-            return { answer, toolsUsed };
+        // Ajustar limite padrão para 5 quando chamado via chat (para evitar lentidão)
+        if (toolName === 'list_products' || toolName === 'get_products') {
+          const currentLimit = typeof args.limit === 'number' ? args.limit : (args.limit ? Number(args.limit) : undefined);
+          if (!currentLimit || currentLimit > 5) {
+            args.limit = 5;
           }
         }
+
+        // Mapear alias do agente para o nome real da tool MCP
+        const mcpToolName = this.mapAgentToolToMcp(toolName);
 
         try {
           const result = await this.callMcpTool(mcpToolName, args);
@@ -91,25 +90,6 @@ export class ChatService {
 
           // Filtrar campos sensíveis ou desnecessários antes de serializar
           let filteredResult = result;
-
-          // Se for array de propriedades, priorizar propriedades com imagens ao truncar
-          if (Array.isArray(filteredResult) && filteredResult.length > 0) {
-            try {
-              const firstItem = filteredResult[0];
-              // Verificar se é um array de propriedades (tem coverImageUrl)
-              if (firstItem && typeof firstItem === 'object' && 'coverImageUrl' in firstItem) {
-                // Ordenar propriedades: primeiro as que têm coverImageUrl, depois as que não têm
-                filteredResult = [...filteredResult].sort((a: any, b: any) => {
-                  const aHasImage = a?.coverImageUrl ? 1 : 0;
-                  const bHasImage = b?.coverImageUrl ? 1 : 0;
-                  return bHasImage - aHasImage; // Propriedades com imagem primeiro
-                });
-              }
-            } catch (error) {
-              // Se houver erro na ordenação, continuar sem ordenar
-              this.logger.warn('Erro ao ordenar propriedades por imagem', { error });
-            }
-          }
 
           // Serializar resultado para JSON string
           let resultContent = JSON.stringify(filteredResult);
@@ -394,39 +374,45 @@ export class ChatService {
 
   private buildSystemPrompt(): string {
     return [
-      'Você é um assistente especializado em imóveis da plataforma Litoral Imóveis.',
+      'Você é um assistente especializado em e-commerce da plataforma Gwan Mart.',
       'Responda às perguntas do usuário e utilize ferramentas quando precisar de dados atualizados.',
       '',
       'FERRAMENTAS DISPONÍVEIS:',
       '',
-        'IMÓVEIS:',
-        '- list_properties: Lista imóveis cadastrados com filtros opcionais (cidade, tipo, finalidade, preço mínimo/máximo, realtor)',
-        '  * Filtros disponíveis:',
-        '    - city: Filtrar por cidade (ex: "São Sebastião")',
-        '    - type: Filtrar por tipo (CASA, APARTAMENTO, TERRENO, SALA_COMERCIAL)',
-        '    - purpose: Filtrar por finalidade (RENT=Aluguel, SALE=Venda, INVESTMENT=Investimento)',
-        '    - minPrice: Preço mínimo (ex: 300000)',
-        '    - maxPrice: Preço máximo (ex: 1000000)',
-        '    - realtorId: Filtrar por realtor específico (UUID)',
-        '  * Exemplos de uso:',
-        '    - "Liste imóveis em São Sebastião" → usar city="São Sebastião"',
-        '    - "Mostre casas à venda" → usar type="CASA", purpose="SALE"',
-        '    - "Busque imóveis para aluguel" → usar purpose="RENT"',
-        '    - "Busque imóveis entre 300 mil e 500 mil" → usar minPrice=300000, maxPrice=500000',
-        '    - "Imóveis com piscina" → usar list_properties e filtrar resultados por comodidades',
-      '- get_property_by_id: Obtém detalhes completos de um imóvel específico pelo UUID',
-      '  * Use quando o usuário solicitar detalhes de um imóvel específico ou mencionar um ID',
-      '  * Exemplos: "Mostre os detalhes do imóvel {id}", "Quero ver mais informações sobre esse imóvel"',
+      'PRODUTOS:',
+      '- list_products: Lista produtos cadastrados com filtros opcionais',
+      '  * Filtros disponíveis:',
+      '    - category: Filtrar por categoria (ex: "Eletrônicos")',
+      '    - subcategory: Filtrar por subcategoria (ex: "Smartphones")',
+      '    - minPrice: Preço mínimo (ex: 100)',
+      '    - maxPrice: Preço máximo (ex: 1000)',
+      '    - search: Busca por texto (nome, descrição, código)',
+      '    - page: Número da página (padrão: 1)',
+      '    - limit: Itens por página (padrão: 10, máximo: 100)',
+      '    - sortBy: Campo para ordenação (name, originalPrice, createdAt)',
+      '    - sortOrder: Ordem (asc, desc)',
+      '  * Exemplos de uso:',
+      '    - "Liste produtos de eletrônicos" → usar category="Eletrônicos"',
+      '    - "Mostre smartphones" → usar subcategory="Smartphones"',
+      '    - "Busque produtos entre 500 e 1000 reais" → usar minPrice=500, maxPrice=1000',
+      '    - "Procure por notebook" → usar search="notebook"',
+      '    - "Produtos em destaque" → usar list_products e filtrar por isFeatured=true nos resultados',
+      '- get_product_by_code: Obtém detalhes completos de um produto específico pelo código',
+      '  * Use quando o usuário solicitar detalhes de um produto específico ou mencionar um código',
+      '  * Exemplos: "Mostre os detalhes do produto PROD-001", "Quero ver mais informações sobre esse produto"',
       '',
-      'CAMPOS DISPONÍVEIS EM IMÓVEIS:',
-      '- Informações básicas: título, descrição, tipo, finalidade (RENT=Aluguel, SALE=Venda, INVESTMENT=Investimento), preço, cidade, bairro',
-      '- Características: área (m²), quartos, banheiros, vagas de garagem',
-      '- Comodidades: piscina, hidromassagem, frente mar, jardim, área gourmet, mobiliado',
-      '- Imagens: imagem de capa e galeria de imagens',
-      '- Realtor: informações do realtor responsável',
+      'CAMPOS DISPONÍVEIS EM PRODUTOS:',
+      '- Informações básicas: nome, código, descrição, categoria, subcategoria',
+      '- Preços: preço original, preço promocional, percentual de desconto',
+      '- Estoque: quantidade disponível',
+      '- Imagens: thumbnail, imagem principal, galeria de imagens',
+      '- Avaliações: média de avaliações, total de reviews',
+      '- Fornecedor: informações do fornecedor',
       '',
-        'Quando retornar dados, seja objetivo e, se útil, sintetize os resultados:',
-        '- Para imóveis: título, tipo, finalidade (Aluguel/Venda/Investimento), cidade, bairro, preço, área, quartos, banheiros, comodidades principais',
+      'Quando retornar dados, seja objetivo e, se útil, sintetize os resultados:',
+      '- Para produtos: nome, categoria, preço (original e promocional se houver), estoque, descrição resumida',
+      '- Destaque produtos com desconto ou em promoção',
+      '- Se o usuário perguntar sobre disponibilidade, verifique o estoque',
     ].join('\n');
   }
 
@@ -435,64 +421,36 @@ export class ChatService {
     return `${message}${ctx}`;
   }
 
-  private buildToolsSchema() {
-    return [
-      {
-        type: 'function',
-        function: {
-          name: 'list_properties',
-          description: 'Lista imóveis cadastrados com filtros opcionais (cidade, tipo, faixa de preço, realtor).',
-          parameters: {
-            type: 'object',
-            properties: {
-              city: { 
-                type: 'string', 
-                description: 'Filtrar por cidade (ex: "São Sebastião")' 
-              },
-              type: { 
-                type: 'string', 
-                description: 'Filtrar por tipo (CASA, APARTAMENTO, TERRENO, SALA_COMERCIAL)',
-                enum: ['CASA', 'APARTAMENTO', 'TERRENO', 'SALA_COMERCIAL'],
-              },
-              purpose: { 
-                type: 'string', 
-                description: 'Filtrar por finalidade (RENT=Aluguel, SALE=Venda, INVESTMENT=Investimento)',
-                enum: ['RENT', 'SALE', 'INVESTMENT'],
-              },
-              minPrice: { 
-                type: 'number', 
-                description: 'Preço mínimo (ex: 300000)' 
-              },
-              maxPrice: { 
-                type: 'number', 
-                description: 'Preço máximo (ex: 1000000)' 
-              },
-              realtorId: { 
-                type: 'string', 
-                description: 'Filter by specific realtor (UUID)'
-              },
+  private async buildToolsSchema() {
+    try {
+      // Buscar tools disponíveis do MCP bridge
+      const url = `${this.mcpBridgeBase}/tools`;
+      const res = await axios.get(url, { timeout: 5000 });
+      
+      if (res.data?.tools && Array.isArray(res.data.tools)) {
+        // Converter tools do MCP para formato OpenAI
+        return res.data.tools.map((tool: any) => ({
+          type: 'function',
+          function: {
+            name: tool.name,
+            description: tool.description || '',
+            parameters: tool.inputSchema || {
+              type: 'object',
+              properties: {},
             },
           },
-        },
-      },
-      {
-        type: 'function',
-        function: {
-          name: 'get_property_by_id',
-          description: 'Obter detalhes completos de um imóvel pelo ID (UUID).',
-          parameters: {
-            type: 'object',
-            properties: {
-              id: { 
-                type: 'string',
-                description: 'ID do imóvel (UUID)',
-              },
-            },
-            required: ['id'],
-          },
-        },
-      },
-    ];
+        }));
+      }
+      
+      this.logger.warn('Nenhuma tool encontrada no MCP bridge');
+      return [];
+    } catch (error) {
+      this.logger.error('Erro ao buscar tools do MCP bridge', {
+        error: error instanceof Error ? error.message : String(error),
+        mcpBridgeBase: this.mcpBridgeBase,
+      });
+      return [];
+    }
   }
 
   private mapAgentToolToMcp(name: string): string {
@@ -636,6 +594,40 @@ export class ChatService {
         const bathrooms = property.bathrooms ? `${property.bathrooms} banheiro(s)` : '';
         const details = [price, area, bedrooms, bathrooms].filter(Boolean).join(', ');
         return `Imóvel: ${property.title || property.id}${property.type ? ` (${property.type})` : ''}${property.city ? ` - ${property.city}` : ''}${details ? `. ${details}` : ''}.`;
+      }
+
+      if (toolName === 'list_products') {
+        const products = Array.isArray(firstResult) ? firstResult : (firstResult?.data?.products || firstResult?.products || []);
+        if (products.length === 0) {
+          return 'Não há produtos cadastrados no sistema no momento.';
+        }
+        const productNames = products.slice(0, 10).map((p: any) => {
+          const price = p.promotionalPrice 
+            ? `R$ ${Number(p.promotionalPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : p.originalPrice 
+              ? `R$ ${Number(p.originalPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              : '';
+          const category = p.category || '';
+          return `${p.name || p.code}${category ? ` (${category})` : ''}${price ? ` - ${price}` : ''}`;
+        }).join(', ');
+        const moreText = products.length > 10 ? ` (e mais ${products.length - 10} produto(s))` : '';
+        return `Encontrei ${products.length} produto(s) cadastrado(s): ${productNames}${moreText}.`;
+      }
+
+      if (toolName === 'get_product_by_code') {
+        const product = Array.isArray(firstResult) ? firstResult[0] : (firstResult?.data || firstResult?.product || firstResult);
+        if (!product) {
+          return 'Produto não encontrado.';
+        }
+        const price = product.promotionalPrice 
+          ? `R$ ${Number(product.promotionalPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+          : product.originalPrice 
+            ? `R$ ${Number(product.originalPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : '';
+        const category = product.category || '';
+        const stock = product.stock !== undefined ? `${product.stock} unidades` : '';
+        const details = [price, category, stock].filter(Boolean).join(', ');
+        return `Produto: ${product.name || product.code}${details ? `. ${details}` : ''}.`;
       }
 
       // Para outras ferramentas, retornar null para usar fallback padrão

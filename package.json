@@ -59,7 +59,8 @@
     "admin:create": "npx ts-node -r tsconfig-paths/register scripts/create-admin.ts",
     "generate:swagger-token": "npx ts-node -r tsconfig-paths/register scripts/generate-swagger-token.ts",
     "db:seed": "npx ts-node -r tsconfig-paths/register scripts/run-seeder.ts",
-    "db:seed:simple": "npx ts-node -r tsconfig-paths/register scripts/simple-seeder.ts"
+    "db:seed:simple": "npx ts-node -r tsconfig-paths/register scripts/simple-seeder.ts",
+    "db:seed:products": "npx ts-node -r tsconfig-paths/register src/database/seed-products.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.20.0",

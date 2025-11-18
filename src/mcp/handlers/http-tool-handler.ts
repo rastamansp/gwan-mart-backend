@@ -46,6 +46,34 @@ export async function executeHttpTool(
     const queryParams = new URLSearchParams();
     let body: any = undefined;
 
+    // Função auxiliar para converter valores baseado no schema
+    const convertValueBySchema = (key: string, value: any): any => {
+      if (value === undefined || value === null) {
+        return value;
+      }
+
+      // Verificar o tipo esperado no schema da tool
+      const propertySchema = tool.inputSchema?.properties?.[key];
+      if (!propertySchema) {
+        return value;
+      }
+
+      const expectedType = propertySchema.type;
+      
+      // Converter baseado no tipo esperado
+      if (expectedType === 'number' || expectedType === 'integer') {
+        const numValue = typeof value === 'string' ? parseFloat(value) : Number(value);
+        return isNaN(numValue) ? value : numValue;
+      } else if (expectedType === 'boolean') {
+        if (typeof value === 'string') {
+          return value.toLowerCase() === 'true';
+        }
+        return Boolean(value);
+      }
+      
+      return value;
+    };
+
     // Separar query params do body (ignorar campos de autenticação)
     for (const [key, value] of Object.entries(args)) {
       // Ignorar campos de autenticação
@@ -53,18 +81,21 @@ export async function executeHttpTool(
         continue;
       }
       
+      const convertedValue = convertValueBySchema(key, value);
+      
       if (!tool.httpPath.includes(`{${key}}`)) {
         if (tool.httpMethod === 'GET') {
           // Para GET, tudo vai como query param
-          if (value !== undefined && value !== null) {
-            queryParams.append(key, String(value));
+          // Query params sempre são strings, mas o NestJS fará a conversão
+          if (convertedValue !== undefined && convertedValue !== null) {
+            queryParams.append(key, String(convertedValue));
           }
         } else {
-          // Para outros métodos, vai no body
+          // Para outros métodos, vai no body com tipo correto
           if (body === undefined) {
             body = {};
           }
-          body[key] = value;
+          body[key] = convertedValue;
         }
       }
     }
