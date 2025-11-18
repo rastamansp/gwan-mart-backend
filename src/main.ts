@@ -117,10 +117,18 @@ export async function bootstrap() {
     
     // Se for requisição OPTIONS (preflight), responder imediatamente
     if (req.method === 'OPTIONS') {
-      console.log(`[CORS] Preflight request de: ${origin || 'null'}`);
-      
       // Permitir todas as origens localhost em desenvolvimento
       if (isDevelopment && origin && (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1'))) {
+        res.header('Access-Control-Allow-Origin', origin);
+        res.header('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
+        res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Request-Id, Accept, Origin, X-Requested-With');
+        res.header('Access-Control-Allow-Credentials', 'true');
+        res.header('Access-Control-Max-Age', '86400');
+        return res.status(204).send();
+      }
+      
+      // Em produção, verificar se a origem está na lista permitida
+      if (!isDevelopment && origin && corsOrigins.includes(origin)) {
         res.header('Access-Control-Allow-Origin', origin);
         res.header('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
         res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Request-Id, Accept, Origin, X-Requested-With');
