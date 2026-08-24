@@ -5,13 +5,14 @@ import { ResponseType, FormattedResponse } from '../../interfaces/chat-response.
 import { PaginationService } from './pagination.service';
 import { SuggestionsService } from '../suggestions.service';
 import { ILogger } from '../../../shared/application/interfaces/logger.interface';
+import { buildProductUrl } from './product-url';
 
 @Injectable()
 export class WhatsAppFormatterService {
   private readonly maxMessageLength = 4000; // Limite seguro para WhatsApp
   private readonly maxCaptionLength = 1024; // Limite de caption no WhatsApp
   private readonly defaultEventLimit = 5; // Limite padrão de eventos para listar
-  private readonly frontendUrl: string;
+  private readonly productUrl: (code: string) => string;
 
   constructor(
     private readonly paginationService: PaginationService,
@@ -20,7 +21,14 @@ export class WhatsAppFormatterService {
     @Inject('ILogger')
     private readonly logger: ILogger,
   ) {
-    this.frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'https://mart.gwan.com.br/';
+    // Default = site institucional (gwan-ia), que hospeda a area /gwan-mart.
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'https://gwan.cloud';
+    const productPath =
+      this.configService.get<string>('FRONTEND_PRODUCT_PATH') ||
+      'gwan-mart/product';
+    this.productUrl = (code: string) =>
+      buildProductUrl(frontendUrl, productPath, code);
   }
 
   /**
@@ -178,7 +186,7 @@ export class WhatsAppFormatterService {
         message += `   ⭐ ${rating.toFixed(1)} (${p.totalReviews || 0} avaliações)\n`;
       }
       
-      message += `   🔗 ${this.frontendUrl}products/${p.code}\n\n`;
+      message += `   🔗 ${this.productUrl(p.code)}\n\n`;
     });
 
     if (products.length > this.defaultEventLimit) {
@@ -252,7 +260,7 @@ export class WhatsAppFormatterService {
     }
     
     // Link
-    message += `🔗 ${this.frontendUrl}products/${product.code}`;
+    message += `🔗 ${this.productUrl(product.code)}`;
 
     return {
       answer: message,

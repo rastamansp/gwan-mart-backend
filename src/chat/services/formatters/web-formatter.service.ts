@@ -4,11 +4,12 @@ import { ResponseType, FormattedResponse } from '../../interfaces/chat-response.
 import { PaginationService } from './pagination.service';
 import { SuggestionsService } from '../suggestions.service';
 import { ILogger } from '../../../shared/application/interfaces/logger.interface';
+import { buildProductUrl } from './product-url';
 
 @Injectable()
 export class WebFormatterService {
   private readonly defaultEventLimit = 5; // Limite padrão de eventos para listar
-  private readonly frontendUrl: string;
+  private readonly productUrl: (code: string) => string;
 
   constructor(
     private readonly paginationService: PaginationService,
@@ -17,7 +18,14 @@ export class WebFormatterService {
     @Inject('ILogger')
     private readonly logger: ILogger,
   ) {
-    this.frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'https://mart.gwan.com.br/';
+    // Default = site institucional (gwan-ia), que hospeda a area /gwan-mart.
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'https://gwan.cloud';
+    const productPath =
+      this.configService.get<string>('FRONTEND_PRODUCT_PATH') ||
+      'gwan-mart/product';
+    this.productUrl = (code: string) =>
+      buildProductUrl(frontendUrl, productPath, code);
   }
 
   /**
@@ -194,7 +202,7 @@ export class WebFormatterService {
         averageRating: Number(p.averageRating) || 0,
         totalReviews: p.totalReviews || 0,
         isFeatured: p.isFeatured || false,
-        url: `${this.frontendUrl}products/${p.code}`,
+        url: this.productUrl(p.code),
       };
       
       // Log se algum campo importante estiver faltando
@@ -282,7 +290,7 @@ export class WebFormatterService {
         markdown += `\n![${p.name || 'Produto'}](${p.realImage || p.thumbnail})\n`;
       }
       
-      markdown += `\n[Ver detalhes](${this.frontendUrl}products/${p.code})\n\n`;
+      markdown += `\n[Ver detalhes](${this.productUrl(p.code)})\n\n`;
       markdown += '---\n\n';
     });
 
@@ -358,7 +366,7 @@ export class WebFormatterService {
         : product.originalPrice 
           ? `R$ ${Number(product.originalPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
           : null,
-      url: `${this.frontendUrl}products/${product.code}`,
+      url: this.productUrl(product.code),
     };
 
     const suggestions = this.suggestionsService.generateContextualSuggestions('product_detail', completeProduct);
@@ -445,7 +453,7 @@ export class WebFormatterService {
     }
     
     // Link
-    markdown += `\n[Ver no site](${this.frontendUrl}products/${product.code})\n`;
+    markdown += `\n[Ver no site](${this.productUrl(product.code)})\n`;
 
     return markdown;
   }
