@@ -4,6 +4,7 @@ import axios from 'axios';
 import { MessageChannel } from '../shared/domain/value-objects/message-channel.enum';
 import { ResponseFormatterService } from './services/response-formatter.service';
 import { FormattedResponse } from './interfaces/chat-response.interface';
+import { ChatModelRouterService } from './services/providers/chat-model-router.service';
 
 // Usamos any para permitir propriedades específicas do OpenAI (ex.: tool_calls)
 type OpenAIMessage = any;
@@ -22,6 +23,11 @@ export class ChatService {
     private readonly config: ConfigService,
     @Inject(ResponseFormatterService)
     private readonly responseFormatter: ResponseFormatterService,
+    // Router de LLM: respeita AI_PROVIDER (openai|claude). Quando claude, o
+    // ClaudeChatProviderService traduz messages/tools do formato OpenAI para o
+    // da Anthropic e converte a resposta de volta, entao o restante deste
+    // service (loop de tool_calls, choices[0].message) segue inalterado.
+    private readonly chatModelRouter: ChatModelRouterService,
   ) {
     this.openaiApiKey = this.config.get<string>('OPENAI_API_KEY')!;
     this.openaiModel = this.config.get<string>('OPENAI_MODEL') || 'gpt-4o-mini';
@@ -60,7 +66,7 @@ export class ChatService {
     const toolsUsed: { name: string; arguments?: Record<string, unknown> }[] = [];
 
     // Primeira chamada ao modelo
-    let completion = await this.callOpenAI(messages, tools);
+    let completion = await this.chatModelRouter.complete(messages, tools, systemPrompt);
 
     while (iteration < this.maxToolIterations && completion?.choices?.[0]?.message?.tool_calls?.length) {
       const assistantMsg = completion.choices[0].message;
@@ -303,7 +309,7 @@ export class ChatService {
       }
 
       try {
-        completion = await this.callOpenAI(messages, tools);
+        completion = await this.chatModelRouter.complete(messages, tools, systemPrompt);
       } catch (err) {
         // Log do erro para debug
         const errorMessage = err instanceof Error ? err.message : String(err);
@@ -518,42 +524,10 @@ export class ChatService {
     }
   }
 
-  private async callOpenAI(messages: OpenAIMessage[], tools: any) {
-    const url = 'https://api.openai.com/v1/chat/completions';
-    const headers = {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${this.openaiApiKey}`,
-    };
-    const body = {
-      model: this.openaiModel,
-      messages,
-      tools: tools && tools.length > 0 ? tools : undefined,
-      tool_choice: tools && tools.length > 0 ? 'auto' : undefined,
-      temperature: 0.2,
-    } as any;
-
-    try {
-      const res = await axios.post(url, body, { headers, timeout: this.requestTimeoutMs });
-      return res.data;
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        const errorDetails = {
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          data: error.response?.data,
-          requestBody: {
-            model: body.model,
-            messagesCount: body.messages?.length,
-            toolsCount: body.tools?.length,
-            tools: body.tools,
-          },
-        };
-        this.logger.error('[ERROR] Erro ao chamar OpenAI API', errorDetails);
-        throw new Error(`Erro ao chamar OpenAI: ${error.response?.data?.error?.message || error.message}`);
-      }
-      throw error;
-    }
-  }
+  // callOpenAI() foi removido: a chamada ao modelo passou a ser feita pelo
+  // ChatModelRouterService (services/providers/), que despacha para OpenAI ou
+  // Claude conforme AI_PROVIDER. A implementacao antiga vive agora em
+  // OpenAiChatProviderService, sem mudanca de comportamento.
 
   private buildFallbackAnswerFromTools(toolsUsed: { name: string; arguments?: Record<string, unknown> }[]): string {
     if (!toolsUsed.length) return 'Não foi possível concluir a resposta no momento.';

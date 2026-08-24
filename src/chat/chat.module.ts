@@ -7,6 +7,9 @@ import { WhatsAppFormatterService } from './services/formatters/whatsapp-formatt
 import { WebFormatterService } from './services/formatters/web-formatter.service';
 import { PaginationService } from './services/formatters/pagination.service';
 import { SuggestionsService } from './services/suggestions.service';
+import { ChatModelRouterService } from './services/providers/chat-model-router.service';
+import { ClaudeChatProviderService } from './services/providers/claude-chat-provider.service';
+import { OpenAiChatProviderService } from './services/providers/openai-chat-provider.service';
 import { SharedModule } from '../shared/shared.module';
 
 @Module({
@@ -19,6 +22,9 @@ import { SharedModule } from '../shared/shared.module';
     WebFormatterService,
     PaginationService,
     SuggestionsService,
+    ChatModelRouterService,
+    ClaudeChatProviderService,
+    OpenAiChatProviderService,
   ],
   exports: [ChatService, WhatsAppFormatterService, ResponseFormatterService], // Exportar para permitir uso em outros módulos
 })
