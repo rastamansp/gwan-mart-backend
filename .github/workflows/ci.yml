@@ -1,0 +1,77 @@
+# CI do Gwan Mart Backend — verifica, não publica.
+#
+# Substitui o antigo deploy.yml, que rodava `npm run deploy:prod` (build + docs +
+# um `echo` de sucesso) e anunciava "Deploy to Production" sem publicar coisa
+# alguma. Deploy do ecossistema GWAN é exclusivamente via Portainer.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: gwan_mart_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gwan_mart_ci
+      # Sem valor padrão no código: a aplicação recusa iniciar sem isso.
+      JWT_SECRET: ci-secret-nao-usar-fora-do-ci-000000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      # O schema tem que nascer da migration versionada, num banco vazio: é
+      # exatamente o que o primeiro deploy faz. Rodar duas vezes prova que a
+      # baseline é reexecutável.
+      - name: Migrations em banco limpo
+        run: |
+          npm run typeorm:migration:run
+          npm run typeorm:migration:run
+
+      - name: Verificar tabelas criadas
+        run: |
+          for t in users products product_images product_chunks conversations messages agents user_credits; do
+            npx ts-node -e "
+              import { DataSource } from 'typeorm';
+              const ds = new DataSource({ type: 'postgres', url: process.env.DATABASE_URL });
+              ds.initialize()
+                .then(() => ds.query(\"SELECT to_regclass('public.$t') IS NOT NULL AS ok\"))
+                .then(([r]) => { if (!r.ok) { throw new Error('tabela ausente: $t'); } console.log('ok: $t'); return ds.destroy(); })
+                .catch((e) => { console.error(e.message); process.exit(1); });
+            "
+          done
+
+      - name: Testes
+        run: npm test

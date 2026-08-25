@@ -1,50 +1,14 @@
-name: Deploy to Production
-
-on:
-  push:
-    branches: [main]
-  workflow_dispatch:
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          
-      - name: Install dependencies
-        run: npm ci       
-        
-      - name: Build project
-        run: npm run build
-        
-      - name: Generate documentation
-        run: npm run docs:generate
-        
-      - name: Validate documentation
-        run: npm run docs:validate
-        
-      - name: Deploy to production
-        run: npm run deploy:prod
-        env:
-          NODE_ENV: production
-          
-      - name: Notify deployment success
-        if: success()
-        run: |
-          echo "✅ Deploy realizado com sucesso!"
-          echo "🚀 Aplicação disponível em: https://api.gwan.com.br"
-          echo "📚 Documentação disponível em: https://api.gwan.com.br/api"
-          
-      - name: Notify deployment failure
-        if: failure()
-        run: |
-          echo "❌ Deploy falhou!"
-          echo "🔍 Verificar logs para detalhes"
+# ⚠️ WORKFLOW DESATIVADO.
+#
+# Este arquivo se chamava "Deploy to Production", disparava em todo push na main
+# e executava `npm run deploy:prod` — que era build + docs + `echo 'Deploy
+# realizado com sucesso!'`. Não publicava nada. Pior: dava sinal verde de deploy
+# que nunca aconteceu, e não rodava teste algum.
+#
+# No ecossistema GWAN o deploy é feito exclusivamente pelo Portainer; CI serve
+# para verificar. A verificação vive agora em ci.yml (build, lint, migrations em
+# banco limpo e testes).
+#
+# O conteúdo foi esvaziado em vez de o arquivo ser removido apenas porque a
+# remoção foi bloqueada pelo ambiente — apagar continua sendo o desfecho
+# preferível. Sem `on:`, o GitHub Actions não agenda execução alguma.

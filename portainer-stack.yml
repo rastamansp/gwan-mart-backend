@@ -1,67 +1,14 @@
-version: '3.8'
-
-services:
-  gwan-events-backend:
-    image: gwan-events-backend:latest
-    container_name: gwan-events-backend
-    restart: unless-stopped
-    environment:
-      # Configurações básicas
-      - NODE_ENV=production
-      - PORT=3001
-      
-      # JWT
-      - JWT_SECRET=${JWT_SECRET}
-      
-      # CORS para frontend
-      - CORS_ORIGINS=https://events.gwan.com.br,https://www.events.gwan.com.br,https://api-events.gwan.com.br
-      
-      # MCP Server
-      - MCP_BASE_URL=https://api-events.gwan.com.br
-      - MCP_PORT_SSE=3002
-      - MCP_AUTH_TOKEN=${MCP_AUTH_TOKEN}
-      
-    volumes:
-      - logs_data:/app/logs
-      
-    networks:
-      - gwan
-      
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-      
-    labels:
-      # Traefik configuration for api-events.gwan.com.br
-      - "traefik.enable=true"
-      
-      # HTTP Router (redireciona para HTTPS)
-      - "traefik.http.routers.gwan-events-backend-http.rule=Host(`api-events.gwan.com.br`)"
-      - "traefik.http.routers.gwan-events-backend-http.entrypoints=web"
-      - "traefik.http.routers.gwan-events-backend-http.middlewares=redirect-to-https"
-      
-      # HTTPS Router
-      - "traefik.http.routers.gwan-events-backend.rule=Host(`api-events.gwan.com.br`)"
-      - "traefik.http.routers.gwan-events-backend.entrypoints=websecure"
-      - "traefik.http.routers.gwan-events-backend.tls=true"
-      - "traefik.http.routers.gwan-events-backend.tls.certresolver=letsencrypt"
-      
-      # Service configuration
-      - "traefik.http.services.gwan-events-backend.loadbalancer.server.port=3001"
-      - "traefik.docker.network=gwan"
-      
-      # Middleware para redirecionamento HTTP -> HTTPS
-      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
-
-  # PostgreSQL e Redis removidos - não utilizados no projeto atual
-
-volumes:
-  logs_data:
-    driver: local
-
-networks:
-  gwan:
-    external: true
+# ⚠️ ARQUIVO DESATIVADO — NÃO É UMA STACK VÁLIDA.
+#
+# Até 2026-08-25 este arquivo continha a stack do **gwan-events-backend**,
+# herdada por fork: nome de serviço `gwan-events-backend`, imagem
+# `gwan-events-backend:latest`, CORS de `events.gwan.com.br` e MCP de
+# `api-events.gwan.com.br`. Colá-lo no Portainer publicaria o app errado.
+#
+# A stack de produção do Gwan Mart é **docker-compose.production.yml**, na raiz
+# deste repositório. É esse o arquivo a usar em Portainer → Stacks.
+#
+# O conteúdo antigo foi esvaziado em vez de o arquivo ser removido apenas porque
+# a remoção foi bloqueada pelo ambiente; apagar o arquivo continua sendo o
+# desfecho preferível. Vazio, ele falha alto no Portainer em vez de publicar
+# silenciosamente outro aplicativo.

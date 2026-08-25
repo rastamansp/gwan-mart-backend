@@ -75,16 +75,21 @@ COPY --from=builder --chown=nestjs:nodejs /app/src ./src
 COPY --from=builder --chown=nestjs:nodejs /app/tsconfig.json ./tsconfig.json
 COPY --from=builder --chown=nestjs:nodejs /app/nest-cli.json ./nest-cli.json
 
+# Entrypoint (a stage de produção não copia o repositório inteiro)
+COPY --from=builder --chown=nestjs:nodejs /app/docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
+
 # Mudar para usuário não-root
 USER nestjs
 
-# Expor porta
-EXPOSE 3001
+# Expor porta (slot 11 do ecossistema GWAN)
+EXPOSE 3011
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3001/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+  CMD node -e "require('http').get('http://127.0.0.1:3011/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
-# Comando de inicialização (sem migrations por enquanto)
-# Tentar encontrar main.js em diferentes locais
-CMD sh -c "if [ -f dist/src/main.js ]; then node dist/src/main.js; elif [ -f dist/main.js ]; then node dist/main.js; else echo 'ERRO: main.js nao encontrado!' && find dist -name 'main.js' -type f && exit 1; fi"
+# Inicialização: o entrypoint espera o PostgreSQL, aplica as migrations e só
+# então sobe a aplicação. Antes este CMD chamava o node direto e o
+# docker-entrypoint.sh era código morto — nenhuma migration rodava no deploy.
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
