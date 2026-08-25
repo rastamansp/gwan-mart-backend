@@ -1,0 +1,57 @@
+schema: spec-driven
+
+context: |
+  gwan-mart-backend — API do Gwan Mart (marketplace/e-commerce), slot 11 do ecossistema GWAN
+  (backend :3011 em dev). Ainda SEM dominio e SEM stack em producao; quando for publicado, o
+  deploy e exclusivamente via Portainer (nunca SSH/docker compose up), rede gwan-network,
+  dominio no padrao *.gwan.cloud (gwan.com.br e legado do fork).
+  Front: o Mart NAO tem site proprio — o front dele e a area /gwan-mart do site institucional
+  (repo gwan-ia, slot 0, :5173 em dev, gwan.cloud em prod), incluindo vitrine, catalogo,
+  pagina de produto (/gwan-mart/product/:code) e widget de chat.
+  Stack: NestJS 10 + TypeScript 5 + TypeORM 0.3 + PostgreSQL; JWT/Passport (roles USER,
+  ORGANIZER, ADMIN); MinIO para imagens (obrigatorio no boot — MinioStorageService faz throw
+  se nao verificar o bucket); Redis para cache; Swagger em /api.
+  IA: chat com loop de tool_calls; provider selecionavel por AI_PROVIDER (claude | openai) via
+  ChatModelRouterService; as tools MCP sao geradas automaticamente do OpenAPI
+  (src/mcp/converters/openapi-to-mcp.ts) — endpoint novo no controller vira tool do bot.
+  Arquitetura: Clean Architecture no modulo products (domain/entities + domain/repositories +
+  application/use-cases + infrastructure/repositories); o resto do repo ainda e NestJS
+  convencional herdado do fork.
+  Origem: este repo e um FORK do gwan-imoveis-backend (imoveis -> produtos). Resiudo do fork e
+  divida conhecida e deve ser removido quando tocado, nunca ampliado: referencias a
+  imovel/propriedade/corretor em DTOs, seeds com @gwan.com.br, script test:bdd apontando para
+  src/properties/ (inexistente), workflow deploy.yml que so faz `echo` (nao publica nada).
+  Regras nao negociaveis:
+  - Deploy so via Portainer; nada de credencial ou .env commitado.
+  - Dominio canonico gwan.cloud; nunca reintroduzir mart.gwan.com.br / api-mart.gwan.com.br.
+  - Links de produto nas respostas do bot saem de buildProductUrl() (FRONTEND_URL +
+    FRONTEND_PRODUCT_PATH) — nunca concatenar dominio/rota na mao no formatter.
+  - Em producao synchronize e false: schema novo exige migration versionada, e a migration
+    precisa estar registrada na DataSource de CLI (src/config/data-source.ts).
+  - Endpoint que escreve catalogo ou gasta credito de IA (embeddings) exige autenticacao.
+  Convencoes: requisitos REQ-FXX-NN / RN-FXX-NN; conventional commits; portas do slot 11
+  (API 3011, Postgres dev 5436, MinIO dev 9010/9011).
+  Estado: dev local funcional (Postgres+MinIO em apps/mart-backend/docker-compose.dev.yml,
+  catalogo seedado, chat respondendo via Claude). Nao publicado: sem migration do schema de
+  produtos, compose de producao fora do padrao GWAN e sem CI que rode teste.
+  SDD canonico vive em apps/mart-backend/docs/spec/ no monorepo gwan-infra (padrao GWAN) —
+  OpenSpec cobre o fluxo de changes, nao substitui docs/spec/.
+
+# Project context (optional)
+# This is shown to AI when creating artifacts.
+# Add your tech stack, conventions, style guides, domain knowledge, etc.
+# Example:
+#   context: |
+#     Tech stack: TypeScript, React, Node.js
+#     We use conventional commits
+#     Domain: e-commerce platform
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
