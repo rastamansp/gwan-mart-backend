@@ -3,5 +3,7 @@ export interface IStorageService {
   deleteFile(filePath: string): Promise<boolean>;
   getFileUrl(filePath: string): string;
   fileExists(filePath: string): Promise<boolean>;
+  /** Verificação usada pelo health check: falha se o storage não responder. */
+  checkHealth(): Promise<void>;
 }
 

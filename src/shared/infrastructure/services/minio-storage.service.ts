@@ -103,6 +103,17 @@ export class MinioStorageService implements IStorageService, OnModuleInit {
     });
   }
 
+  /**
+   * Health check: confirma que o MinIO responde e que o bucket existe.
+   * Não cria bucket — criar é responsabilidade do boot (ensureBucketExists).
+   */
+  async checkHealth(): Promise<void> {
+    const exists = await this.minioClient.bucketExists(this.bucketName);
+    if (!exists) {
+      throw new Error(`bucket ${this.bucketName} não encontrado`);
+    }
+  }
+
   private async ensureBucketExists(): Promise<void> {
     try {
       const exists = await this.minioClient.bucketExists(this.bucketName);
