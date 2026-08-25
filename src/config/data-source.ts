@@ -1,28 +1,28 @@
 import { DataSource } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import * as dotenv from 'dotenv';
-import { User } from '../shared/domain/entities/user.entity';
-import { Conversation } from '../shared/domain/entities/conversation.entity';
-import { Message } from '../shared/domain/entities/message.entity';
-import { UserCredit } from '../shared/domain/entities/user-credit.entity';
-import { Agent } from '../shared/domain/entities/agent.entity';
 
 // Carregar variáveis de ambiente
 dotenv.config();
 
 const configService = new ConfigService();
 
+// Entidades e migrations por glob, e não por lista fixa.
+//
+// A lista anterior era herdada do fork do gwan-imoveis-backend e citava apenas 5
+// entidades (User, Conversation, Message, UserCredit, Agent) — as 3 do catálogo
+// (Product, ProductImage, ProductChunk) ficavam invisíveis para o CLI, então
+// `migration:generate` produzia um diff sem o catálogo inteiro.
+//
+// O glob espelha o que o runtime carrega em typeorm.config.ts, para que a lista
+// não volte a divergir quando uma entidade nova for criada.
+const isTypeScript = __filename.endsWith('.ts');
+
 const AppDataSource = new DataSource({
   type: 'postgres',
   url: configService.get<string>('DATABASE_URL'),
-  entities: [
-    User,
-    Conversation,
-    Message,
-    UserCredit,
-    Agent,
-  ],
-  migrations: ['src/migrations/*.ts'],
+  entities: [isTypeScript ? 'src/**/*.entity.ts' : 'dist/**/*.entity.js'],
+  migrations: [isTypeScript ? 'src/migrations/*.ts' : 'dist/migrations/*.js'],
   synchronize: false,
   logging: false, // Desabilitar logging de queries SQL
   ssl: false,

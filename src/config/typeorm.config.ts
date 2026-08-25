@@ -23,7 +23,10 @@ export const getTypeOrmConfig = (configService: ConfigService): TypeOrmModuleOpt
     url: databaseUrl,
     entities: ['dist/**/*.entity.js'],
     migrations: ['dist/migrations/*.js'],
-    synchronize: configService.get<string>('NODE_ENV') !== 'production',
+    // O schema vem de migration versionada, nunca do synchronize — inclusive em
+    // dev, para que o schema testado localmente seja o mesmo que producao recebe.
+    // Rode `npm run typeorm:migration:run` num banco novo antes do start.
+    synchronize: false,
     logging: false, // Desabilitar logging de queries SQL
     ssl: false,  // Desabilitar SSL explicitamente
   };

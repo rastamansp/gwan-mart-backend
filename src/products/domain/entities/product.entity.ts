@@ -14,7 +14,10 @@ export class Product {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'varchar', length: 255 })
+  // Codigo e o identificador de negocio do produto: a API expoe
+  // GET /api/products/:code e o chat monta link por code. Sem unique, dois
+  // produtos com o mesmo codigo tornam essa rota nao-deterministica.
+  @Column({ type: 'varchar', length: 255, unique: true })
   code: string;
 
   @Column({ type: 'text' })
