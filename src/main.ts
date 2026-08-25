@@ -38,6 +38,9 @@ export async function bootstrap() {
   // manda Origin com o dominio da propria API.
   // Quando o Mart ganhar dominio, preferir CORS_ORIGINS na stack a editar aqui.
   const defaultProdOrigins = [
+    // A loja do Mart (web/ deste repo) e quem consome esta API.
+    'https://mart.gwan.cloud',
+    // O site institucional ainda tem a area /gwan-mart e segue consumindo.
     'https://gwan.cloud',
     'https://www.gwan.cloud',
   ];

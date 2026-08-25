@@ -38,12 +38,13 @@ services:
       # Auth — sem valor padrão: a aplicação recusa iniciar sem JWT_SECRET
       - JWT_SECRET=${JWT_SECRET}
 
-      # CORS: quem consome esta API é a área /gwan-mart do site institucional
-      - CORS_ORIGINS=${CORS_ORIGINS:-https://gwan.cloud,https://www.gwan.cloud}
+      # CORS: a loja do Mart (docker-compose.web-prod.yml) e, enquanto existir, a área
+      # /gwan-mart do site institucional
+      - CORS_ORIGINS=${CORS_ORIGINS:-https://mart.gwan.cloud,https://gwan.cloud,https://www.gwan.cloud}
 
       # Links de produto nas respostas do chat (ver src/chat/services/formatters)
-      - FRONTEND_URL=${FRONTEND_URL:-https://gwan.cloud}
-      - FRONTEND_PRODUCT_PATH=${FRONTEND_PRODUCT_PATH:-gwan-mart/product}
+      - FRONTEND_URL=${FRONTEND_URL:-https://mart.gwan.cloud}
+      - FRONTEND_PRODUCT_PATH=${FRONTEND_PRODUCT_PATH:-product}
 
       # MCP Server
       - MCP_BASE_URL=https://${MART_HOST:-mart-api.gwan.cloud}
