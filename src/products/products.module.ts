@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { ProductsController } from './infra/products.controller';
 import { ProductsService } from './infra/products.service';
 import { LoggingService } from '@/shared/infrastructure/logger/logging.service';
@@ -41,6 +42,16 @@ import {
   imports: [
     TypeOrmModule.forFeature([Product, ProductImage, ProductChunk]),
     ConfigModule,
+    // Limite para a busca semantica: ela e publica (a pagina de catalogo do
+    // gwan-ia chama sem token) e cada chamada gera embedding pago. Sem teto,
+    // um visitante em loop queima a chave do mantenedor.
+    ThrottlerModule.forRoot([
+      {
+        name: 'semantic-search',
+        ttl: Number(process.env.SEMANTIC_SEARCH_TTL_MS ?? 60_000),
+        limit: Number(process.env.SEMANTIC_SEARCH_LIMIT ?? 10),
+      },
+    ]),
   ],
   controllers: [ProductsController],
   providers: [

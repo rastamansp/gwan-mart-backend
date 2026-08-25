@@ -21,7 +21,7 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "test:bdd": "cucumber-js --require-module ts-node/register --require test/bdd/support/hooks.ts --require test/bdd/steps/common-steps.ts --require test/bdd/steps/chat-health-steps.ts --require src/chat/steps/chat-steps.ts --require src/properties/steps/properties-steps.ts src/properties/features/*.feature src/chat/features/*.feature --format @cucumber/pretty-formatter --format json:test/bdd/reports/cucumber-report.json --format html:test/bdd/reports/cucumber-report.html",
+    "test:bdd": "cucumber-js --require-module ts-node/register --require test/bdd/support/hooks.ts --require test/bdd/steps/common-steps.ts --require test/bdd/steps/chat-health-steps.ts --require src/chat/steps/chat-steps.ts src/chat/features/*.feature --format @cucumber/pretty-formatter --format json:test/bdd/reports/cucumber-report.json --format html:test/bdd/reports/cucumber-report.html",
     "test:bdd:watch": "cucumber-js --require-module ts-node/register --require test/bdd/support/hooks.ts --require test/bdd/steps/common-steps.ts --require test/bdd/steps/chat-health-steps.ts --require src/**/steps/*.ts src/**/features/*.feature --format @cucumber/pretty-formatter --watch",
     "test:bdd:report": "cucumber-js --require-module ts-node/register --require test/bdd/support/hooks.ts --require test/bdd/steps/common-steps.ts --require test/bdd/steps/chat-health-steps.ts --require src/**/steps/*.ts src/**/features/*.feature --format @cucumber/pretty-formatter --format json:test/bdd/reports/cucumber-report.json --format html:test/bdd/reports/cucumber-report.html && echo 'Relatório gerado em test/bdd/reports/'",
     "docs:generate": "node scripts/docs-manager.js generate",
@@ -31,8 +31,6 @@
     "docs:watch": "node scripts/docs-manager.js watch",
     "docs:help": "node scripts/docs-manager.js help",
     "deploy:prepare": "npm run build && npm run docs:generate && npm run docs:validate",
-    "deploy:prod": "npm run deploy:prepare && echo 'Deploy para produção realizado com sucesso!'",
-    "deploy:rollback": "echo 'Rollback executado. Verificar logs para detalhes.'",
     "docker:build": "docker-compose build",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
@@ -60,7 +58,8 @@
     "generate:swagger-token": "npx ts-node -r tsconfig-paths/register scripts/generate-swagger-token.ts",
     "db:seed": "npx ts-node -r tsconfig-paths/register scripts/run-seeder.ts",
     "db:seed:simple": "npx ts-node -r tsconfig-paths/register scripts/simple-seeder.ts",
-    "db:seed:products": "npx ts-node -r tsconfig-paths/register src/database/seed-products.ts"
+    "db:seed:products": "npx ts-node -r tsconfig-paths/register src/database/seed-products.ts",
+    "typeorm:migration:run:prod": "node ./node_modules/typeorm/cli.js migration:run -d dist/src/config/data-source.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.20.0",
@@ -72,6 +71,7 @@
     "@nestjs/passport": "^10.0.2",
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/swagger": "^7.1.17",
+    "@nestjs/throttler": "^5.2.0",
     "@nestjs/typeorm": "^11.0.0",
     "@solufy/evolution-sdk": "^0.2.3",
     "@types/multer": "^2.0.0",

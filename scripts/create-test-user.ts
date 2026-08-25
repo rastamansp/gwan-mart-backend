@@ -11,7 +11,13 @@ dotenv.config();
 async function createTestUser() {
   console.log('🚀 Iniciando criação do usuário de teste...');
   
-  const databaseUrl = process.env.DATABASE_URL || 'postgresql://postgres:pazdedeus@postgres.gwan.com.br:5433/gwan_imoveis';
+  const databaseUrl = (() => {
+    const url = process.env.DATABASE_URL;
+    if (!url) {
+      throw new Error('DATABASE_URL não configurada. Defina a variável antes de rodar este script — não há fallback (o antigo apontava para um banco de produção com senha no código).');
+    }
+    return url;
+  })();
 
   const dataSource = new DataSource({
     type: 'postgres',

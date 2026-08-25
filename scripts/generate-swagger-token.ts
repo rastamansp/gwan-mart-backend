@@ -7,7 +7,13 @@ async function generateSwaggerToken() {
   
   const dataSource = new DataSource({
     type: 'postgres',
-    url: process.env.DATABASE_URL || 'postgresql://postgres:pazdedeus@postgres.gwan.com.br:5433/gwan_events',
+    url: (() => {
+    const url = process.env.DATABASE_URL;
+    if (!url) {
+      throw new Error('DATABASE_URL não configurada. Defina a variável antes de rodar este script — não há fallback (o antigo apontava para um banco de produção com senha no código).');
+    }
+    return url;
+  })(),
     entities: [User],
     synchronize: false,
     logging: false,
@@ -33,7 +39,13 @@ async function generateSwaggerToken() {
     }
 
     // Gerar token permanente
-    const jwtSecret = process.env.JWT_SECRET || 'pazdedeus';
+    const jwtSecret = (() => {
+    const url = process.env.JWT_SECRET;
+    if (!url) {
+      throw new Error('JWT_SECRET não configurada. Defina a variável antes de rodar este script — não há fallback (o antigo apontava para um banco de produção com senha no código).');
+    }
+    return url;
+  })();
     const payload = {
       email: adminUser.email,
       sub: adminUser.id,

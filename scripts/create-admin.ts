@@ -9,7 +9,13 @@ async function createAdmin() {
   
   const dataSource = new DataSource({
     type: 'postgres',
-    url: process.env.DATABASE_URL || 'postgresql://postgres:pazdedeus@postgres.gwan.com.br:5433/gwan_events',
+    url: (() => {
+    const url = process.env.DATABASE_URL;
+    if (!url) {
+      throw new Error('DATABASE_URL não configurada. Defina a variável antes de rodar este script — não há fallback (o antigo apontava para um banco de produção com senha no código).');
+    }
+    return url;
+  })(),
     entities: [User],
     synchronize: false,
     logging: true,
@@ -22,9 +28,10 @@ async function createAdmin() {
 
     const userRepository = dataSource.getRepository(User);
 
-    // Verificar se já existe admin@gwan.com.br
+    // Verificar se o admin já existe (e-mail configurável; gwan.com.br é legado)
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@gwan.cloud';
     const existingAdmin = await userRepository.findOne({ 
-      where: { email: 'admin@gwan.com.br' } 
+      where: { email: adminEmail } 
     });
 
     if (existingAdmin) {
@@ -37,11 +44,19 @@ async function createAdmin() {
     }
 
     // Criar usuário ADMIN
-    const hashedPassword = await bcrypt.hash('pazdedeus', 10);
+    // Senha vem de env. A anterior era literal no codigo e publicada junto com
+    // o repositorio — um admin criado com ela ja nasce comprometido.
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    if (!adminPassword || adminPassword.length < 12) {
+      throw new Error(
+        'ADMIN_PASSWORD não configurada (mínimo 12 caracteres). Defina antes de criar o administrador.',
+      );
+    }
+    const hashedPassword = await bcrypt.hash(adminPassword, 10);
     const adminUser = User.create(
       uuidv4(),
       'Administrador do Sistema',
-      'admin@gwan.com.br',
+      adminEmail,
       hashedPassword,
       '+5511999999999',
       UserRole.ADMIN
@@ -58,8 +73,8 @@ async function createAdmin() {
     });
 
     console.log('🔑 Credenciais do ADMIN:');
-    console.log('   Email: admin@gwan.com.br');
-    console.log('   Senha: pazdedeus');
+    console.log(`   Email: ${adminEmail}`);
+    console.log('   Senha: a definida em ADMIN_PASSWORD');
     console.log('   Role: ADMIN');
 
   } catch (error) {

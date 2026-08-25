@@ -22,6 +22,8 @@ import {
   ApiExtension,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/auth/guards/jwt-auth.guard';
+import { CorretorOrAdminGuard } from '@/auth/guards/corretor-or-admin.guard';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import {
   CreateProductUseCase,
   GetProductByIdUseCase,
@@ -66,7 +68,7 @@ export class ProductsController {
   ) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, CorretorOrAdminGuard)
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Criar novo produto',
@@ -350,10 +352,12 @@ export class ProductsController {
   }
 
   @Post('import')
+  @UseGuards(JwtAuthGuard, CorretorOrAdminGuard)
+  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Importar múltiplos produtos',
     description:
-      'Importa múltiplos produtos em lote. Não requer autenticação. Útil para migração de dados ou importação em massa.',
+      'Importa múltiplos produtos em lote. Exige token de usuário com papel administrativo — é escrita em massa, sem revisão. Útil para migração de dados ou importação em massa.',
   })
   @ApiBody({
     description: 'Array de produtos para importação',
@@ -940,7 +944,7 @@ export class ProductsController {
   }
 
   @Put(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, CorretorOrAdminGuard)
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Atualizar produto',
@@ -1221,7 +1225,7 @@ export class ProductsController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, CorretorOrAdminGuard)
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Deletar produto (soft delete)',
@@ -1294,6 +1298,8 @@ export class ProductsController {
   }
 
   @Post('catalog/update/:id')
+  @UseGuards(JwtAuthGuard, CorretorOrAdminGuard)
+  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Atualizar catálogo do produto',
     description:
@@ -1361,10 +1367,12 @@ export class ProductsController {
   }
 
   @Post('search/similar')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ 'semantic-search': {} })
   @ApiOperation({
     summary: 'Buscar produtos similares usando embeddings',
     description:
-      'Busca produtos similares usando inteligência artificial (OpenAI embeddings) e similaridade de cosseno. Não requer autenticação.',
+      'Busca produtos similares usando inteligência artificial (OpenAI embeddings) e similaridade de cosseno. Não requer autenticação, mas é limitada por IP (429 ao exceder) porque cada chamada gera embedding pago.',
   })
   @ApiBody({
     description: 'Query para busca por similaridade usando IA',
