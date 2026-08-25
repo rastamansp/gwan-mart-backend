@@ -542,34 +542,9 @@ export class ChatService {
       // Se o primeiro resultado já for um array, usar diretamente
       const firstResult = results[0];
       
-      if (toolName === 'list_properties') {
-        const properties = Array.isArray(firstResult) ? firstResult : (firstResult?.data || firstResult?.properties || []);
-        if (properties.length === 0) {
-          return 'Não há imóveis cadastrados no sistema no momento.';
-        }
-        const propertyTitles = properties.slice(0, 10).map((p: any) => {
-          const price = p.price ? `R$ ${Number(p.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '';
-          const type = p.type || '';
-          const city = p.city || '';
-          return `${p.title || p.id}${type ? ` (${type})` : ''}${city ? ` - ${city}` : ''}${price ? ` - ${price}` : ''}`;
-        }).join(', ');
-        const moreText = properties.length > 10 ? ` (e mais ${properties.length - 10} imóvel(is))` : '';
-        return `Encontrei ${properties.length} imóvel(is) cadastrado(s): ${propertyTitles}${moreText}.`;
-      }
-
-      if (toolName === 'get_property_by_id') {
-        const property = Array.isArray(firstResult) ? firstResult[0] : (firstResult?.data || firstResult?.property || firstResult);
-        if (!property) {
-          return 'Imóvel não encontrado.';
-        }
-        const price = property.price ? `R$ ${Number(property.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '';
-        const area = property.area ? `${property.area}m²` : '';
-        const bedrooms = property.bedrooms ? `${property.bedrooms} quarto(s)` : '';
-        const bathrooms = property.bathrooms ? `${property.bathrooms} banheiro(s)` : '';
-        const details = [price, area, bedrooms, bathrooms].filter(Boolean).join(', ');
-        return `Imóvel: ${property.title || property.id}${property.type ? ` (${property.type})` : ''}${property.city ? ` - ${property.city}` : ''}${details ? `. ${details}` : ''}.`;
-      }
-
+      // Os ramos de list_properties / get_property_by_id foram removidos: as
+      // tools do bot são geradas do OpenAPI desta API (openapi-to-mcp), que
+      // expõe produtos — nunca imóveis. Eram código morto do fork.
       if (toolName === 'list_products') {
         const products = Array.isArray(firstResult) ? firstResult : (firstResult?.data?.products || firstResult?.products || []);
         if (products.length === 0) {

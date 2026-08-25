@@ -32,14 +32,14 @@ export class DatabaseSeeder {
 
   private async createAdminUser(): Promise<void> {
     const existingAdmin = await this.userRepository.findOne({ 
-      where: { email: 'admin@gwan.com.br' } 
+      where: { email: 'admin@gwan.cloud' } 
     });
     
     if (!existingAdmin) {
       const adminUser = User.create(
         'admin-user-id',
         'Administrador do Sistema',
-        'admin@gwan.com.br',
+        'admin@gwan.cloud',
         await bcrypt.hash('admin123', 10),
         '+5511999999999',
         UserRole.ADMIN,
@@ -52,14 +52,14 @@ export class DatabaseSeeder {
 
   private async createCorretorUser(): Promise<void> {
     const existingCorretor = await this.userRepository.findOne({ 
-      where: { email: 'vendedor@gwan.com.br' } 
+      where: { email: 'vendedor@gwan.cloud' } 
     });
     
     if (!existingCorretor) {
       const corretorUser = User.create(
         'vendedor-user-id',
         'João Silva Vendedor',
-        'vendedor@gwan.com.br',
+        'vendedor@gwan.cloud',
         await bcrypt.hash('corretor123', 10),
         '+5511888888888',
         UserRole.CORRETOR,
@@ -72,14 +72,14 @@ export class DatabaseSeeder {
 
   private async createRegularUser(): Promise<void> {
     const existingUser = await this.userRepository.findOne({ 
-      where: { email: 'usuario@gwan.com.br' } 
+      where: { email: 'usuario@gwan.cloud' } 
     });
     
     if (!existingUser) {
       const regularUser = User.create(
         'regular-user-id',
         'Maria Santos',
-        'usuario@gwan.com.br',
+        'usuario@gwan.cloud',
         await bcrypt.hash('usuario123', 10),
         '+5511777777777',
         UserRole.USER,

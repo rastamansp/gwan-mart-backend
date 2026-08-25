@@ -1,7 +1,8 @@
 import { UserCredit } from '../entities/user-credit.entity';
 
-export const IUserCreditRepository = Symbol('IUserCreditRepository');
-
+// Injeção é feita pelo token string 'IUserCreditRepository' (ver shared.module.ts).
+// O Symbol de mesmo nome que existia aqui nunca foi usado e colidia com a
+// interface no lint.
 export interface IUserCreditRepository {
   save(userCredit: UserCredit): Promise<UserCredit>;
   findById(id: string): Promise<UserCredit | null>;

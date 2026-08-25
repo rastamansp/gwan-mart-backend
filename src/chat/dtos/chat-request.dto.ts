@@ -4,7 +4,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export class ChatRequestDto {
   @ApiProperty({
     description: 'Mensagem do usuário para o agente',
-    example: 'Liste imóveis em São Sebastião',
+    example: 'Quais tablets vocês têm em estoque?',
   })
   @IsString()
   @IsNotEmpty()
