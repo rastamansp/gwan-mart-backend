@@ -9,9 +9,9 @@ site institucional para ser alterada ou publicada.
 - **WHEN** alguém precisa mudar como os produtos aparecem na loja
 - **THEN** a mudança acontece neste repositório e é publicada sem tocar no site institucional
 
-#### Scenario: Stacks independentes
-- **WHEN** a loja é reimplantada
-- **THEN** a API continua no ar sem reinício, e vice-versa
+#### Scenario: Publicação em stack única
+- **WHEN** a loja precisa ser atualizada
+- **THEN** basta atualizar as propriedades da stack já existente, sem criar uma segunda stack para o mesmo produto
 
 ### Requirement: Catálogo navegável a partir da API real
 A loja SHALL apresentar os produtos vindos da API — destaques, listagem com busca, filtro por

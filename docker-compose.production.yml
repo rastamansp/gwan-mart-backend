@@ -1,11 +1,21 @@
-# Stack de produção do Gwan Mart Backend (slot 11 do ecossistema GWAN).
+# Stack de produção do Gwan Mart (slot 11 do ecossistema GWAN) — API + loja.
+#
+# **Uma stack só.** Loja e API vivem no mesmo repositório, então vivem também no
+# mesmo compose: atualizar a loja é editar as propriedades desta stack no
+# Portainer, sem criar uma segunda.
+#
+#   gwan-mart-backend  → mart-api.gwan.cloud   (NestJS, porta 3011)
+#   gwan-mart-web      → mart.gwan.cloud       (nginx servindo o build de web/)
+#
+# As duas se encontram pelo **domínio público**, não pela rede interna: quem
+# chama a API é o navegador do visitante. Por isso não há `depends_on` — a loja
+# sobe e serve HTML mesmo com a API fora, mostrando o próprio estado de erro.
 #
 # Deploy é EXCLUSIVAMENTE via Portainer (Stacks → Add/Update stack). Nunca
 # `docker compose up` por SSH no servidor.
 #
 # O que mudou em relação à versão herdada do fork do gwan-imoveis-backend:
-#   - domínio: api-mart.gwan.com.br (nunca existiu no DNS) → mart-api.gwan.cloud,
-#     que é exatamente o host que o compose do gwan-ia já consome em produção;
+#   - domínio: api-mart.gwan.com.br (nunca existiu no DNS) → mart-api.gwan.cloud;
 #   - rede: `gwan` → `gwan-network` (a rede externa real da infra);
 #   - porta: 3001 → 3011 (slot 11);
 #   - o middleware `redirect-to-https` global deixou de ser redeclarado aqui:
@@ -14,12 +24,16 @@
 #   - logging com rotação e limites de recurso, conforme docs/padroes-tecnicos-gwan.md.
 #
 # Variáveis obrigatórias (definir na UI do Portainer, nunca no arquivo):
-#   DATABASE_URL, JWT_SECRET, MCP_AUTH_TOKEN, MINIO_*, REDIS_URL
+#   DATABASE_URL, JWT_SECRET, MCP_AUTH_TOKEN, MINIO_*, REDIS_URL, CLAUDE_API_KEY
 #
 # ATENÇÃO — pré-requisitos antes do primeiro deploy:
-#   1. Registro A de mart-api.gwan.cloud apontando para o servidor.
-#   2. Migrations aplicadas: o entrypoint as executa no start (docker-entrypoint.sh).
+#   1. Registros A de mart-api.gwan.cloud E mart.gwan.cloud → 187.127.5.72.
+#   2. Migrations: o entrypoint as aplica no start; se falharem, o container
+#      aborta em vez de subir sem schema (docker-entrypoint.sh).
+#   3. As VITE_* da loja são "baked" no build. Mudar MART_API_URL exige rebuild
+#      da imagem no update da stack, não apenas restart.
 services:
+  # ---------------------------------------------------------------- API -----
   gwan-mart-backend:
     build:
       context: .
@@ -38,11 +52,12 @@ services:
       # Auth — sem valor padrão: a aplicação recusa iniciar sem JWT_SECRET
       - JWT_SECRET=${JWT_SECRET}
 
-      # CORS: a loja do Mart (docker-compose.web-prod.yml) e, enquanto existir, a área
-      # /gwan-mart do site institucional
+      # CORS: a loja deste mesmo compose e, enquanto existir, a área /gwan-mart
+      # do site institucional
       - CORS_ORIGINS=${CORS_ORIGINS:-https://mart.gwan.cloud,https://gwan.cloud,https://www.gwan.cloud}
 
-      # Links de produto nas respostas do chat (ver src/chat/services/formatters)
+      # Links de produto nas respostas do chat (ver src/chat/services/formatters).
+      # Precisam casar com a rota da loja: /product/:code
       - FRONTEND_URL=${FRONTEND_URL:-https://mart.gwan.cloud}
       - FRONTEND_PRODUCT_PATH=${FRONTEND_PRODUCT_PATH:-product}
 
@@ -136,6 +151,70 @@ services:
           memory: 768M
         reservations:
           memory: 256M
+
+  # --------------------------------------------------------------- LOJA -----
+  gwan-mart-web:
+    build:
+      # Contexto é web/, não a raiz: a loja não precisa do código da API para
+      # ser construída.
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        # Baked no bundle em tempo de build — ver nota 3 no topo do arquivo.
+        VITE_MART_API_URL: ${MART_API_URL:-https://mart-api.gwan.cloud/api}
+        VITE_APP_NAME: ${MART_APP_NAME:-Gwan Mart}
+        VITE_APP_VERSION: ${MART_APP_VERSION:-0.1.0}
+    container_name: gwan-mart-web
+    restart: unless-stopped
+
+    networks:
+      - gwan-network
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "--timeout=5",
+          "http://127.0.0.1/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=gwan-network"
+
+      # HTTPS
+      - "traefik.http.routers.gwan-mart-web.rule=Host(`${MART_WEB_HOST:-mart.gwan.cloud}`)"
+      - "traefik.http.routers.gwan-mart-web.entrypoints=websecure"
+      - "traefik.http.routers.gwan-mart-web.tls.certresolver=letsencrypt"
+      - "traefik.http.services.gwan-mart-web.loadbalancer.server.port=80"
+
+      # Redirect HTTP → HTTPS (middleware com nome próprio da loja)
+      - "traefik.http.routers.gwan-mart-web-http.rule=Host(`${MART_WEB_HOST:-mart.gwan.cloud}`)"
+      - "traefik.http.routers.gwan-mart-web-http.entrypoints=web"
+      - "traefik.http.routers.gwan-mart-web-http.middlewares=gwan-mart-web-https-redirect"
+      - "traefik.http.middlewares.gwan-mart-web-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.gwan-mart-web-https-redirect.redirectscheme.permanent=true"
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
 
 volumes:
   logs_data:

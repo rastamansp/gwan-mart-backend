@@ -19,7 +19,7 @@
 
 - [x] 3.1 `Dockerfile` multi-stage (node:20-alpine → nginx:alpine) com as `VITE_*` como build args
 - [x] 3.2 `nginx.conf` com fallback de SPA, gzip, headers de segurança e `/health`
-- [x] 3.3 `docker-compose.web-prod.yml` no padrão GWAN: `gwan-network`, Traefik em `mart.gwan.cloud`, logging rotacionado, limites de recurso
+- [x] 3.3 Serviço `gwan-mart-web` no padrão GWAN (Traefik em `mart.gwan.cloud`, logging rotacionado, limites) — **dentro do `docker-compose.production.yml`**, e não em compose próprio: uma stack só no Portainer para o produto inteiro
 - [x] 3.4 Backend: `FRONTEND_URL=https://mart.gwan.cloud` e `FRONTEND_PRODUCT_PATH=product`; CORS aceitando o novo domínio
 
 ## 4. Registro no ecossistema
@@ -38,4 +38,5 @@
 
 - [x] 6.1 O link "Ver detalhes" do bot vira navegação interna quando aponta para a própria loja (mesma origem) — recarregar a página perderia a conversa aberta
 - [x] 6.2 `/chat` não usa o envelope `{ status, data }` das rotas de catálogo: responde `{ answer, sessionId }` na raiz
+- [x] 6.4 O compose separado da loja foi revertido para stack única a pedido do mantenedor (menos superfície de divergência no Portainer)
 - [x] 6.3 Decimais chegam como string (`numeric` do PostgreSQL) — `toNumber()`/`formatPrice()` centralizam a conversão

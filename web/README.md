@@ -43,5 +43,10 @@ link "Ver detalhes" que o bot devolve.
 
 ## Deploy
 
-Via Portainer, com `docker-compose.web-prod.yml` (na raiz do repo). Stack
-separada da API: as duas sobem e caem de forma independente.
+Via Portainer, com `docker-compose.production.yml` (na raiz do repo) — o mesmo
+arquivo da API. A loja é o serviço `gwan-mart-web`; a API é `gwan-mart-backend`.
+**Uma stack só** para o produto inteiro: atualizar a loja é editar as
+propriedades da stack existente.
+
+Como as `VITE_*` são baked no build, trocar `MART_API_URL` exige rebuild da
+imagem no update da stack — não basta reiniciar.

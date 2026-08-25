@@ -27,8 +27,9 @@ A loja passa a viver em **`mart.gwan.cloud`**, neste repositório.
 - **Escopo v1 — o que já existe de API**: home com destaques, catálogo com busca, filtro por
   categoria e paginação, página de produto por `code`, e o chat do Mart (`POST /api/chat`) como
   painel lateral. Tudo contra a API real; **sem mock**.
-- **`docker-compose.web-prod.yml`**: container nginx próprio, roteado pelo Traefik em
-  `mart.gwan.cloud`, no padrão GWAN (rede `gwan-network`, logging rotacionado, limites).
+- **Serviço `gwan-mart-web` na stack de produção**: container nginx roteado pelo Traefik em
+  `mart.gwan.cloud`, no padrão GWAN (rede `gwan-network`, logging rotacionado, limites) — no
+  mesmo `docker-compose.production.yml` da API, para o produto ter **uma stack só** no Portainer.
 - **Backend aponta para a loja**: `FRONTEND_URL` passa a `https://mart.gwan.cloud` e
   `FRONTEND_PRODUCT_PATH` a `product` — os links "Ver detalhes" do bot passam a levar à loja, e
   não à área do institucional. É troca de env, sem código, graças a `buildProductUrl()`.
@@ -64,8 +65,13 @@ haver decisão sobre onde o admin do Mart deve morar.
 
 - **`web/`** (novo): app Vite, `Dockerfile` multi-stage (node → nginx), `nginx.conf` com
   fallback de SPA e `/health`.
-- **`docker-compose.web-prod.yml`** (novo): stack da loja, separada da stack da API — as duas
-  sobem e caem de forma independente no Portainer.
+- **`docker-compose.production.yml`**: passa a declarar **os dois serviços** —
+  `gwan-mart-backend` (`mart-api.gwan.cloud`) e `gwan-mart-web` (`mart.gwan.cloud`). A loja
+  chegou a ter compose próprio (`docker-compose.web-prod.yml`, removido): como loja e API vivem
+  no mesmo repositório, manter dois arquivos significaria manter duas stacks no Portainer para o
+  mesmo produto, com a chance de divergirem em rede, labels e variáveis. Uma stack só, dois
+  serviços. O preço aceito é que um update da stack toca os dois serviços; não há `depends_on`
+  entre eles, porque quem chama a API é o navegador do visitante, não o container da loja.
 - **`.env.example`**: `FRONTEND_URL`/`FRONTEND_PRODUCT_PATH` apontando para a loja.
 - **`gwan-infra`**: registrar `dominio: mart.gwan.cloud` no `config/gwan-projetos.yml` (slot 11
   está `null`) e criar o registro A — mesmo pré-requisito de `mart-api.gwan.cloud`.
