@@ -17,36 +17,29 @@ export async function bootstrap() {
     ? process.env.CORS_ORIGINS.split(',').map((origin) => origin.trim()).filter(Boolean)
     : null;
 
+  // Dev: o front do Gwan Mart e a area /gwan-mart do site institucional (repo
+  // gwan-ia), que roda em :5173. As portas 3000/3001/3009 da lista antiga vieram
+  // do fork do gwan-imoveis-backend e nao servem front nenhum aqui. Na pratica o
+  // branch de desenvolvimento abaixo ja libera qualquer localhost.
   const defaultDevOrigins = [
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://localhost:3009',
     'http://localhost:5173',
     'http://localhost:8080',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:3001',
-    'http://127.0.0.1:3009',
     'http://127.0.0.1:5173',
     'http://127.0.0.1:8080',
     'file://',
     'null',
   ];
 
+  // Producao: o dominio canonico do ecossistema e gwan.cloud (gwan.com.br e
+  // legado). O Mart nao tem dominio proprio — quem consome esta API e a area
+  // /gwan-mart do site institucional. Os antigos mart.gwan.com.br e
+  // api-mart.gwan.com.br vieram do fork do imoveis e nunca existiram no DNS.
+  // Origem de API (api-*) tambem nao pertence a esta lista: navegador nenhum
+  // manda Origin com o dominio da propria API.
+  // Quando o Mart ganhar dominio, preferir CORS_ORIGINS na stack a editar aqui.
   const defaultProdOrigins = [
-    // Domínios da plataforma Gwan Mart
-    'https://mart.gwan.com.br',
-    'https://www.mart.gwan.com.br',
-    'http://mart.gwan.com.br',
-    'http://www.mart.gwan.com.br',
-    'https://api-mart.gwan.com.br',
-    'https://www.api-mart.gwan.com.br',
-    'http://api-mart.gwan.com.br',
-    'http://www.api-mart.gwan.com.br',
-    // Domínios Gwan (caso necessário)
-    'https://gwan.com.br',
-    'https://www.gwan.com.br',
-    'http://gwan.com.br',
-    'http://www.gwan.com.br',
+    'https://gwan.cloud',
+    'https://www.gwan.cloud',
   ];
 
   // Se CORS_ORIGINS estiver definido, usar ele (mesmo em desenvolvimento)
