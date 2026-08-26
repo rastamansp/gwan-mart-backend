@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { effectivePrice, formatPrice, type Product } from '../lib/api';
+import { Rating } from './Rating';
 
 export function ProductCard({ product }: { product: Product }) {
   const { price, original, discount } = effectivePrice(product);
@@ -34,6 +35,8 @@ export function ProductCard({ product }: { product: Product }) {
           {product.category}
         </p>
         <h3 className="line-clamp-2 font-medium text-zinc-900">{product.name}</h3>
+
+        <Rating value={product.averageRating} total={product.totalReviews} />
 
         <div className="mt-auto pt-3">
           {original !== null && (

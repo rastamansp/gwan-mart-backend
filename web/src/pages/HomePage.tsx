@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ApiError, fetchFeaturedProducts, type Product } from '../lib/api';
 import { ProductCard } from '../components/ProductCard';
 import { EmptyState, ErrorState, LoadingGrid } from '../components/States';
+import { buildOrderUrl } from '../lib/whatsapp';
 
 export function HomePage() {
   const [products, setProducts] = useState<Product[] | null>(null);
@@ -32,6 +33,15 @@ export function HomePage() {
     };
   }, [attempt]);
 
+  // Contato geral: sem produto, só abre a conversa. Some quando o número não
+  // está configurado.
+  const contactUrl = buildOrderUrl({
+    productName: 'Contato — Gwan Mart',
+    productCode: 'CONTATO',
+    quantity: 1,
+    origin: 'São Paulo - SP',
+  });
+
   const categories = Array.from(
     new Set((products ?? []).map((product) => product.category)),
   ).filter(Boolean);
@@ -46,12 +56,24 @@ export function HomePage() {
           Navegue pelos produtos ou pergunte ao assistente — ele consulta o
           estoque real e responde com o que está disponível agora.
         </p>
-        <Link
-          to="/catalog"
-          className="mt-6 inline-block rounded-lg bg-brand-500 px-5 py-3 font-medium text-zinc-900 transition hover:bg-brand-600 hover:text-white"
-        >
-          Ver o catálogo
-        </Link>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link
+            to="/catalog"
+            className="rounded-lg bg-brand-500 px-5 py-3 font-medium text-zinc-900 transition hover:bg-brand-600 hover:text-white"
+          >
+            Ver o catálogo
+          </Link>
+          {contactUrl && (
+            <a
+              href={contactUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-lg border border-white/40 px-5 py-3 font-medium text-white transition hover:bg-white/10"
+            >
+              Falar no WhatsApp
+            </a>
+          )}
+        </div>
       </section>
 
       <section>

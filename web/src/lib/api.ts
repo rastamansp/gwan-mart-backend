@@ -46,6 +46,8 @@ export interface Product {
   stock: number;
   supplier: string;
   ncm: string;
+  /** Descricao do fornecedor: mais completa que `description` quando existe. */
+  supplierProductDescription?: string;
   /** A API devolve decimais como string (numeric do PostgreSQL). */
   originalPrice: string | number;
   promotionalPrice: string | number | null;
@@ -55,8 +57,18 @@ export interface Product {
   thumbnail: string;
   realImage: string;
   images?: ProductImage[];
+  /** `json` no banco: costuma vir `null`, e nem sempre é array. */
+  variations?: ProductVariation[] | null;
+  gtinEan?: string;
   isActive: boolean;
   isFeatured: boolean;
+}
+
+/** Variação de produto, como o catálogo do Mart a persiste. */
+export interface ProductVariation {
+  nome: string;
+  cor?: string;
+  disponivel?: boolean;
 }
 
 export interface ProductPage {
@@ -114,6 +126,7 @@ export interface CatalogQuery {
   limit?: number;
   search?: string;
   category?: string;
+  subcategory?: string;
 }
 
 export function fetchProducts(query: CatalogQuery = {}): Promise<ProductPage> {
@@ -122,8 +135,61 @@ export function fetchProducts(query: CatalogQuery = {}): Promise<ProductPage> {
   params.set('limit', String(query.limit ?? 12));
   if (query.search) params.set('search', query.search);
   if (query.category) params.set('category', query.category);
+  if (query.subcategory) params.set('subcategory', query.subcategory);
 
   return request<ProductPage>(`/products?${params.toString()}`);
+}
+
+/**
+ * Catálogo inteiro, usado só para montar as listas de categoria e subcategoria
+ * do filtro: a API não expõe endpoint de categorias.
+ */
+export function fetchAllProducts(): Promise<Product[]> {
+  return request<Product[]>('/products/all');
+}
+
+export interface SimilarProduct {
+  productId: number;
+  productName: string;
+  productCode: string;
+  similarity: number;
+  metadata?: {
+    price?: string;
+    stock?: number;
+    category?: string;
+    subcategory?: string;
+    supplier?: string;
+    isActive?: boolean;
+    isFeatured?: boolean;
+  };
+}
+
+/**
+ * Busca por similaridade (embeddings).
+ *
+ * Depende de OPENAI_API_KEY no backend — mesmo com AI_PROVIDER=claude, porque o
+ * chat é Claude mas o embedding é da OpenAI. Sem a chave a rota responde 500, e
+ * a loja precisa dizer isso em vez de mostrar "nenhum resultado".
+ *
+ * Também tem teto de 10 chamadas/min por IP (429), por ser rota pública que gera
+ * embedding pago.
+ */
+export function searchSimilarProducts(
+  query: string,
+): Promise<{ results: SimilarProduct[] }> {
+  return request<{ results: SimilarProduct[] }>('/products/search/similar', {
+    method: 'POST',
+    body: JSON.stringify({ query }),
+  });
+}
+
+/** Variações utilizáveis: tolera `null` e formatos inesperados do campo json. */
+export function productVariations(product: Product): ProductVariation[] {
+  if (!Array.isArray(product.variations)) return [];
+  return product.variations.filter(
+    (variation): variation is ProductVariation =>
+      Boolean(variation) && typeof variation.nome === 'string',
+  );
 }
 
 export function fetchFeaturedProducts(): Promise<Product[]> {
