@@ -7,8 +7,26 @@
  * desembrulho fica todo aqui — nenhuma tela deve conhecer o envelope.
  */
 
-const BASE_URL: string =
-  import.meta.env.VITE_MART_API_URL ?? 'http://localhost:3011/api';
+/**
+ * Em produção a URL vem da env (baked no build pelo compose).
+ *
+ * Sem env — o caso de dev —, derivamos do host pelo qual a loja está sendo
+ * acessada: um celular que abre http://192.168.3.218:5184 precisa falar com
+ * http://192.168.3.218:3011/api. Fixar "localhost" apontaria o aparelho para
+ * ele mesmo, e a loja carregaria sem nenhum produto.
+ */
+function resolveBaseUrl(): string {
+  const fromEnv = import.meta.env.VITE_MART_API_URL;
+  if (fromEnv) return fromEnv;
+
+  if (typeof window !== 'undefined' && window.location.hostname) {
+    return `${window.location.protocol}//${window.location.hostname}:3011/api`;
+  }
+
+  return 'http://localhost:3011/api';
+}
+
+const BASE_URL: string = resolveBaseUrl();
 
 export interface ProductImage {
   id: number;

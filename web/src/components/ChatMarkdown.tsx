@@ -80,13 +80,23 @@ export function ChatMarkdown({ content }: { content: string }) {
   );
 }
 
-/** Devolve o caminho interno quando o link aponta para esta mesma loja. */
+/**
+ * Devolve o caminho interno quando o link aponta para esta mesma loja.
+ *
+ * Compara pela rota, não só pela origem: o backend monta o link com o
+ * FRONTEND_URL dele, que pode ser `localhost` enquanto o visitante acessa pelo
+ * IP da rede local (ou vice-versa). Como todo `/product/:code` que o bot gera é
+ * um produto desta loja, a rota é o critério certo.
+ */
 function toInternalPath(href?: string): string | null {
   if (!href) return null;
 
   try {
     const url = new URL(href, window.location.origin);
-    if (url.origin !== window.location.origin) return null;
+    const isSameOrigin = url.origin === window.location.origin;
+    const isProductRoute = url.pathname.startsWith('/product/');
+
+    if (!isSameOrigin && !isProductRoute) return null;
     return `${url.pathname}${url.search}`;
   } catch {
     return null;
