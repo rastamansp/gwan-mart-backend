@@ -34,6 +34,14 @@ const sampleProducts = [
       'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=800&h=800&fit=crop',
       'https://images.unsplash.com/photo-1601972602237-8c79241e468b?w=800&h=800&fit=crop',
     ],
+    // Único produto do seed com variações, de propósito: sem ele o caminho de
+    // escolha obrigatória da loja (e o de variação indisponível) nunca era
+    // exercitado — o campo `variations` é json e vinha `null` em todos.
+    variations: [
+      { nome: '256GB — Preto', cor: 'Preto', disponivel: true },
+      { nome: '256GB — Azul', cor: 'Azul', disponivel: true },
+      { nome: '512GB — Titânio', cor: 'Titânio', disponivel: false },
+    ],
   },
   {
     code: 'PROD-002',
@@ -182,7 +190,9 @@ async function seedProducts() {
       // Criar produto
       const product = productRepository.create({
         ...productFields,
-        variations: null,
+        // Respeita o que o produto declara; `?? null` mantém o comportamento
+        // antigo para os que não têm variações.
+        variations: productFields.variations ?? null,
       });
 
       const savedProduct = await productRepository.save(product);

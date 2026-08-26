@@ -364,27 +364,30 @@ export function ProductPage() {
 
           <div className="space-y-2">
             {contactConfigured && orderUrl ? (
-              <a
-                href={needsVariation ? undefined : orderUrl}
-                target="_blank"
-                rel="noreferrer"
-                aria-disabled={needsVariation}
-                onClick={(event) => {
-                  if (needsVariation) {
-                    event.preventDefault();
-                    notify('error', 'Escolha uma opção antes de pedir.');
+              // Enquanto falta escolher a variação isto é um <button>, não um
+              // <a> sem href: âncora sem destino não é focável nem anunciada
+              // como link, e o visitante que navega por teclado nunca chegaria
+              // à explicação do que falta.
+              needsVariation ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    notify('error', 'Escolha uma opção antes de pedir.')
                   }
-                }}
-                className={`block w-full rounded-lg px-5 py-3 text-center font-medium text-white transition ${
-                  needsVariation
-                    ? 'cursor-not-allowed bg-zinc-300'
-                    : 'bg-emerald-600 hover:bg-emerald-700'
-                }`}
-              >
-                {needsVariation
-                  ? 'Escolha uma opção para pedir'
-                  : 'Pedir pelo WhatsApp'}
-              </a>
+                  className="block w-full rounded-lg bg-zinc-300 px-5 py-3 text-center font-medium text-white transition hover:bg-zinc-400"
+                >
+                  Escolha uma opção para pedir
+                </button>
+              ) : (
+                <a
+                  href={orderUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block w-full rounded-lg bg-emerald-600 px-5 py-3 text-center font-medium text-white transition hover:bg-emerald-700"
+                >
+                  Pedir pelo WhatsApp
+                </a>
+              )
             ) : (
               // Sem número configurado, oferecer o botão abriria uma conversa
               // para um destino inválido.

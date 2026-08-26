@@ -183,6 +183,56 @@ export function searchSimilarProducts(
   });
 }
 
+export interface CatalogStats {
+  /** Produtos ativos e com estoque. */
+  available: number;
+  /** Categorias distintas no catálogo. */
+  categories: number;
+  /** Média ponderada pelo nº de avaliações — `null` se ninguém avaliou. */
+  averageRating: number | null;
+  /** Total de avaliações que entraram na média. */
+  totalReviews: number;
+}
+
+/**
+ * Resumo do catálogo para a home.
+ *
+ * A média é **ponderada** pelo número de avaliações: um produto com 3
+ * avaliações não pode pesar o mesmo que um com 234. E é `null` quando ninguém
+ * avaliou — exibir "0.0" diria que o catálogo é ruim, não que falta avaliação.
+ *
+ * Números que a API não sustenta (vendas, clientes atendidos) não têm função
+ * aqui: a versão do site institucional os traz escritos no código.
+ */
+export function catalogStats(products: Product[]): CatalogStats {
+  const available = products.filter(
+    (product) => product.isActive && product.stock > 0,
+  ).length;
+
+  const categories = new Set(
+    products.map((product) => product.category).filter(Boolean),
+  ).size;
+
+  let weighted = 0;
+  let totalReviews = 0;
+
+  for (const product of products) {
+    const reviews = product.totalReviews ?? 0;
+    const rating = toNumber(product.averageRating);
+    if (reviews > 0 && rating > 0) {
+      weighted += rating * reviews;
+      totalReviews += reviews;
+    }
+  }
+
+  return {
+    available,
+    categories,
+    averageRating: totalReviews > 0 ? weighted / totalReviews : null,
+    totalReviews,
+  };
+}
+
 /** Variações utilizáveis: tolera `null` e formatos inesperados do campo json. */
 export function productVariations(product: Product): ProductVariation[] {
   if (!Array.isArray(product.variations)) return [];

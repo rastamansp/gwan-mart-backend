@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ApiError, fetchFeaturedProducts, type Product } from '../lib/api';
+import {
+  ApiError,
+  catalogStats,
+  fetchAllProducts,
+  fetchFeaturedProducts,
+  type CatalogStats,
+  type Product,
+} from '../lib/api';
 import { ProductCard } from '../components/ProductCard';
 import { EmptyState, ErrorState, LoadingGrid } from '../components/States';
 import { buildOrderUrl } from '../lib/whatsapp';
@@ -33,6 +40,16 @@ export function HomePage() {
     };
   }, [attempt]);
 
+  // Indicadores do catálogo. Falhar aqui omite a seção e não afeta o resto da
+  // home — é resumo, não conteúdo principal.
+  const [stats, setStats] = useState<CatalogStats | null>(null);
+
+  useEffect(() => {
+    fetchAllProducts()
+      .then((all) => setStats(catalogStats(all)))
+      .catch(() => setStats(null));
+  }, []);
+
   // Contato geral: sem produto, só abre a conversa. Some quando o número não
   // está configurado.
   const contactUrl = buildOrderUrl({
@@ -42,7 +59,7 @@ export function HomePage() {
     origin: 'São Paulo - SP',
   });
 
-  const categories = Array.from(
+  const categoryList = Array.from(
     new Set((products ?? []).map((product) => product.category)),
   ).filter(Boolean);
 
@@ -75,6 +92,19 @@ export function HomePage() {
           )}
         </div>
       </section>
+
+      {stats && (
+        <section className="grid gap-4 sm:grid-cols-3">
+          <Stat value={String(stats.available)} label="produtos disponíveis" />
+          <Stat value={String(stats.categories)} label="categorias" />
+          {stats.averageRating !== null && (
+            <Stat
+              value={stats.averageRating.toFixed(1)}
+              label={`avaliação média (${stats.totalReviews} avaliações)`}
+            />
+          )}
+        </section>
+      )}
 
       <section>
         <div className="mb-4 flex items-baseline justify-between">
@@ -109,13 +139,13 @@ export function HomePage() {
         )}
       </section>
 
-      {categories.length > 0 && (
+      {categoryList.length > 0 && (
         <section>
           <h2 className="mb-4 text-xl font-semibold text-zinc-900">
             Categorias
           </h2>
           <div className="flex flex-wrap gap-2">
-            {categories.map((category) => (
+            {categoryList.map((category) => (
               <Link
                 key={category}
                 to={`/catalog?category=${encodeURIComponent(category)}`}
@@ -127,6 +157,15 @@ export function HomePage() {
           </div>
         </section>
       )}
+    </div>
+  );
+}
+
+function Stat({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="rounded-xl border border-zinc-200 bg-white p-5 text-center">
+      <p className="text-3xl font-bold text-brand-700">{value}</p>
+      <p className="mt-1 text-sm text-zinc-600">{label}</p>
     </div>
   );
 }

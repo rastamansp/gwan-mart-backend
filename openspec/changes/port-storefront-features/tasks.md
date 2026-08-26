@@ -9,9 +9,9 @@
 
 ## 2. Variações
 
-- [x] 2.1 Ler `variations` tolerando ausente/`null` e formato inesperado (`productVariations()`). **Nao exercitado com dados reais**: o seed atual traz `variations: null` nos 5 produtos
-- [x] 2.2 Escolha obrigatoria quando houver variacoes; indisponiveis nao sao selecionaveis (mesma ressalva de 2.1)
-- [x] 2.3 Variacao escolhida entra na mensagem do pedido (mesma ressalva de 2.1)
+- [x] 2.1 Ler `variations` tolerando ausente/`null` e formato inesperado (`productVariations()`). **Exercitado**: o seed passou a dar 3 variações ao PROD-001 (uma indisponível), e o laço do seeder deixou de gravar `null` para todos
+- [x] 2.2 Escolha obrigatória validada em browser: opção indisponível vem desabilitada, e pedir sem escolher é recusado com aviso
+- [x] 2.3 Variação escolhida entra na mensagem (`🎨 *Opção:* 256GB — Azul`, conferido na URL gerada)
 
 ## 3. Compartilhar
 
@@ -43,3 +43,7 @@
 ## 7. Nao portado, de proposito
 
 - [x] 7.1 As tres estatisticas da home do institucional ("500+ produtos vendidos", "1.2k+ clientes", "4.9 de media") ficaram de fora: sao numeros escritos no codigo, sem origem. Prova social fabricada numa loja e enganosa
+
+## 8. Corrigido depois da validação
+
+- [x] 8.1 Enquanto faltava escolher a variação, o botão de pedido era um `<a>` sem `href` — âncora sem destino não é focável nem anunciada como link, então quem navega por teclado nunca chegava à explicação. Virou `<button>`, com o `<a>` só quando o pedido está pronto (focabilidade confirmada em browser)
