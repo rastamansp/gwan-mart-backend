@@ -22,5 +22,5 @@
 
 - [x] 4.1 Derrubar o Postgres de dev → `/api/health` reporta não-saudável e nomeia a dependência
 - [x] 4.2 Derrubar o MinIO de dev → estado conforme decidido em 1.2
-- [ ] 4.3 Derrubar o Redis → `degraded` — NAO validado: o Redis usado em dev roda no host (fora do docker-compose do mart), entao nao foi derrubado. O caminho e o mesmo do MinIO (nao-critico), validado por inspecao de codigo apenas
+- [x] 4.3 Derrubar o Redis → `degraded` — validado em 2026-11-16 (issue #5) contra um Redis proprio (`redis:7-alpine`, porta 6491), com a API na 3511: de pe `ok`; parado `degraded` com `cache.error: "The client is offline"`, HTTP 200 em ~4 ms e `GET /api/products` 200; de volta `ok` ~1,3 s depois, sem reiniciar a API. Tambem: boot com o Redis parado sobe `degraded` e vira `ok` quando ele aparece. ⚠️ A primeira tentativa mostrou que a inspecao de codigo tinha errado: o health dava `ok` com o Redis parado, porque o cache nunca usou o Redis — o `@nestjs/cache-manager` v3 ignora a opcao `store` e o `cache-manager-redis-store` virava cache em memoria. Corrigido com `@keyv/redis` em `stores` (`src/config/redis.config.ts`, teste em `redis.config.spec.ts`)
 - [x] 4.4 Tudo no ar → `ok`, e a rota responde em tempo compatível com o intervalo do healthcheck
