@@ -88,6 +88,7 @@ import {
   ],
   exports: [
     // Use Cases
+    GetProductByCodeUseCase,
     CreateProductUseCase,
     GetProductByIdUseCase,
     GetAllProductsUseCase,
