@@ -25,7 +25,9 @@ describe('GET /products/stats', () => {
     totalReviews: 1269,
   };
   const getCatalogStats = { execute: jest.fn(async () => stats) };
-  const getProductByCode = { execute: jest.fn(async () => null) };
+  const getProductByCode = {
+    execute: jest.fn(async (code: string) => ({ code, images: [] })),
+  };
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({

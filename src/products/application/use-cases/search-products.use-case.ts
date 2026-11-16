@@ -2,6 +2,10 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { IProductRepository } from '../../domain/repositories/product.repository.interface';
 import { IProductChunkRepository } from '../../infrastructure/repositories/typeorm-product-chunk.repository';
 import { IEmbeddingService } from '@/shared/application/interfaces/embedding-service.interface';
+import {
+  PublicSearchMetadata,
+  toPublicSearchMetadata,
+} from '../public-product';
 
 export type SearchMode = 'semantic' | 'text';
 
@@ -15,7 +19,11 @@ export interface ProductSearchHit {
   /** Grau de similaridade (0–1). `null` no modo textual: não há o que medir. */
   similarity: number | null;
   image: string | null;
-  metadata: Record<string, unknown>;
+  /**
+   * Sempre a projeção pública, nos dois modos: a rota é anônima, e o
+   * `metadata` do chunk semântico carrega `costPrice` e `supplier`.
+   */
+  metadata: PublicSearchMetadata;
 }
 
 export interface ProductSearchResult {
@@ -70,17 +78,24 @@ export class SearchProductsUseCase {
     const queryEmbedding = await this.embeddingService.generateEmbedding(query);
     const chunks = await this.chunkRepository.searchSimilar(queryEmbedding, limit);
 
-    return chunks.map((chunk) => ({
-      productId: chunk.productId,
-      productCode: chunk.productCode,
-      productName: chunk.productName,
-      similarity:
-        Math.round(
-          cosineSimilarity(queryEmbedding, chunk.getEmbeddingVector()) * 100,
-        ) / 100,
-      image: chunk.metadata.realImage ?? null,
-      metadata: chunk.metadata,
-    }));
+    return (
+      chunks
+        // O modo textual filtra inativo no SQL. O chunk guarda o estado de
+        // quando foi indexado, então a mesma regra vale aqui.
+        .filter((chunk) => chunk.metadata?.isActive !== false)
+        .map((chunk) => ({
+          productId: chunk.productId,
+          productCode: chunk.productCode,
+          productName: chunk.productName,
+          similarity:
+            Math.round(
+              cosineSimilarity(queryEmbedding, chunk.getEmbeddingVector()) *
+                100,
+            ) / 100,
+          image: chunk.metadata?.realImage ?? null,
+          metadata: toPublicSearchMetadata(chunk.metadata),
+        }))
+    );
   }
 
   private async textSearch(
@@ -99,21 +114,7 @@ export class SearchProductsUseCase {
         productName: product.name,
         similarity: null,
         image: product.realImage ?? null,
-        // Só o que a vitrine mostra: preço de custo e fornecedor não saem
-        // numa rota pública. (O modo semântico ainda devolve o `metadata` do
-        // chunk inteiro, com `costPrice` — dívida anterior, fora desta change.)
-        metadata: {
-          category: product.category,
-          subcategory: product.subcategory,
-          originalPrice: product.originalPrice,
-          promotionalPrice: product.promotionalPrice,
-          discountPercentage: product.discountPercentage,
-          stock: product.stock,
-          averageRating: product.averageRating,
-          totalReviews: product.totalReviews,
-          isActive: product.isActive,
-          isFeatured: product.isFeatured,
-        },
+        metadata: toPublicSearchMetadata(product),
       })),
     };
   }

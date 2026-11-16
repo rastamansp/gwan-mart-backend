@@ -43,7 +43,12 @@ import {
   CreateProductDto,
   UpdateProductDto,
   ProductFiltersDto,
+  PUBLIC_SORT_FIELDS,
 } from '../application/dto/product.dto';
+import {
+  toPublicProduct,
+  toPublicProducts,
+} from '../application/public-product';
 import { BaseResponseDto } from '@/shared/application/dto/base-response.dto';
 import { RequestId } from '@/shared/infrastructure/logger/request-id.decorator';
 
@@ -634,7 +639,9 @@ export class ProductsController {
   @ApiQuery({
     name: 'sortBy',
     required: false,
-    description: 'Campo para ordenação (name, price, createdAt, updatedAt)',
+    description:
+      'Campo para ordenação. `price` é sinônimo de `originalPrice`; outro valor responde 400.',
+    enum: [...PUBLIC_SORT_FIELDS, 'price'],
     example: 'name',
   })
   @ApiQuery({
@@ -670,7 +677,6 @@ export class ProductsController {
                   isFeatured: { type: 'boolean', example: false },
                   category: { type: 'string', example: 'Eletrônicos' },
                   subcategory: { type: 'string', example: 'Smartphones' },
-                  supplier: { type: 'string', example: 'Fornecedor ABC' },
                   realImage: {
                     type: 'string',
                     example: 'https://example.com/image.jpg',
@@ -719,7 +725,10 @@ export class ProductsController {
     @RequestId() _requestId: string,
   ): Promise<BaseResponseDto<any>> {
     const result = await this.getProductsWithFiltersUseCase.execute(filters);
-    return BaseResponseDto.success(result);
+    return BaseResponseDto.success({
+      ...result,
+      products: toPublicProducts(result.products),
+    });
   }
 
   @Get('all')
@@ -751,7 +760,6 @@ export class ProductsController {
               isFeatured: { type: 'boolean', example: false },
               category: { type: 'string', example: 'Eletrônicos' },
               subcategory: { type: 'string', example: 'Smartphones' },
-              supplier: { type: 'string', example: 'Fornecedor ABC' },
               realImage: {
                 type: 'string',
                 example: 'https://example.com/image.jpg',
@@ -770,6 +778,30 @@ export class ProductsController {
     },
   })
   async getAllProducts(
+    @RequestId() _requestId: string,
+  ): Promise<BaseResponseDto<any>> {
+    // O repositório devolve também os inativos (o admin precisa deles); a
+    // vitrine não. Para o admin: GET /products/admin/all.
+    const result = await this.getAllProductsUseCase.execute();
+    return BaseResponseDto.success(
+      toPublicProducts(result.filter((product) => product.isActive)),
+    );
+  }
+
+  @Get('admin/all')
+  @UseGuards(JwtAuthGuard, CorretorOrAdminGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Listar todos os produtos (admin)',
+    description:
+      'Lista todos os produtos não removidos, inclusive inativos, com os campos internos ' +
+      '(`costPrice`, `supplier`, `gtinEanPackage`) que as rotas públicas não devolvem. ' +
+      'Requer ADMIN ou CORRETOR.',
+  })
+  @ApiResponse({ status: 200, description: 'Produtos listados' })
+  @ApiResponse({ status: 401, description: 'Sem token válido' })
+  @ApiResponse({ status: 403, description: 'Papel sem acesso ao catálogo' })
+  async getAllProductsForAdmin(
     @RequestId() _requestId: string,
   ): Promise<BaseResponseDto<any>> {
     const result = await this.getAllProductsUseCase.execute();
@@ -806,7 +838,6 @@ export class ProductsController {
               isFeatured: { type: 'boolean', example: true },
               category: { type: 'string', example: 'Eletrônicos' },
               subcategory: { type: 'string', example: 'Smartphones' },
-              supplier: { type: 'string', example: 'Fornecedor ABC' },
               realImage: {
                 type: 'string',
                 example: 'https://example.com/featured-image.jpg',
@@ -830,7 +861,7 @@ export class ProductsController {
     @RequestId() _requestId: string,
   ): Promise<BaseResponseDto<any>> {
     const result = await this.getFeaturedProductsUseCase.execute();
-    return BaseResponseDto.success(result);
+    return BaseResponseDto.success(toPublicProducts(result));
   }
 
   // Precisa ficar ANTES de @Get(':code'): o Express casa as rotas na ordem de
@@ -937,10 +968,7 @@ export class ProductsController {
             description: { type: 'string' },
             ncm: { type: 'string', example: '85171200' },
             stock: { type: 'number', example: 100 },
-            costPrice: { type: 'number', example: 500.0 },
-            supplier: { type: 'string', example: 'Fornecedor ABC' },
             gtinEan: { type: 'string', example: '1234567890123' },
-            gtinEanPackage: { type: 'string', example: '1234567890123' },
             supplierProductDescription: { type: 'string' },
             thumbnail: {
               type: 'string',
@@ -1010,7 +1038,7 @@ export class ProductsController {
     @RequestId() _requestId: string,
   ): Promise<BaseResponseDto<any>> {
     const result = await this.getProductByCodeUseCase.execute(code);
-    return BaseResponseDto.success(result);
+    return BaseResponseDto.success(toPublicProduct(result));
   }
 
   @Put(':id')

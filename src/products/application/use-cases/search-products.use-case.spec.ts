@@ -124,6 +124,60 @@ describe('SearchProductsUseCase', () => {
     expect(result.results[0]).toMatchObject({ productCode: 'CAF-001', similarity: 1 });
   });
 
+  it('no modo semântico não expõe o que o chunk guarda de interno', async () => {
+    // O chunk grava o produto inteiro em `metadata` (é o que a indexação usa),
+    // inclusive custo e fornecedor. A rota é pública.
+    const chunk = {
+      productId: 7,
+      productCode: 'CAF-001',
+      productName: 'Café Especial',
+      metadata: {
+        ...cafe,
+        gtinEanPackage: 'EMB-1',
+        deletedAt: null,
+      },
+      getEmbeddingVector: () => [1, 0],
+    } as unknown as ProductChunk;
+    const { useCase, chunkRepository } = setup({
+      isConfigured: () => true,
+      generateEmbedding: jest.fn().mockResolvedValue([1, 0]),
+    });
+    chunkRepository.searchSimilar.mockResolvedValue([chunk]);
+
+    const [semantic] = (await useCase.execute('cafe', 10)).results;
+    const { useCase: textUseCase } = setup({ isConfigured: () => false });
+    const [text] = (await textUseCase.execute('cafe', 10)).results;
+
+    for (const field of ['costPrice', 'supplier', 'gtinEanPackage', 'deletedAt']) {
+      expect(semantic.metadata).not.toHaveProperty(field);
+    }
+    // Mesma projeção nos dois modos.
+    expect(semantic.metadata).toEqual(text.metadata);
+  });
+
+  it('no modo semântico omite produto inativo, como o textual', async () => {
+    const chunk = (isActive: boolean, code: string) =>
+      ({
+        productId: 1,
+        productCode: code,
+        productName: code,
+        metadata: { isActive },
+        getEmbeddingVector: () => [1, 0],
+      }) as unknown as ProductChunk;
+    const { useCase, chunkRepository } = setup({
+      isConfigured: () => true,
+      generateEmbedding: jest.fn().mockResolvedValue([1, 0]),
+    });
+    chunkRepository.searchSimilar.mockResolvedValue([
+      chunk(true, 'ON'),
+      chunk(false, 'OFF'),
+    ]);
+
+    const { results } = await useCase.execute('x', 10);
+
+    expect(results.map((r) => r.productCode)).toEqual(['ON']);
+  });
+
   it('erro também na busca textual (banco fora) continua subindo', async () => {
     const { useCase, productRepository } = setup({ isConfigured: () => false });
     productRepository.searchByText.mockRejectedValue(new Error('ECONNREFUSED'));

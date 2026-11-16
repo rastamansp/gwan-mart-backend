@@ -44,7 +44,7 @@ export interface Product {
   category: string;
   subcategory: string;
   stock: number;
-  supplier: string;
+  // Sem `supplier`/`costPrice`: dado comercial, a API pública não devolve.
   ncm: string;
   /** Descricao do fornecedor: mais completa que `description` quando existe. */
   supplierProductDescription?: string;
@@ -159,7 +159,6 @@ export interface SimilarProduct {
     stock?: number;
     category?: string;
     subcategory?: string;
-    supplier?: string;
     isActive?: boolean;
     isFeatured?: boolean;
   };
