@@ -27,6 +27,14 @@ existentes sem plano de transição.
 - **WHEN** um usuário existente autentica após a revisão de papéis
 - **THEN** o acesso dele é preservado conforme o plano de transição, sem perda silenciosa de permissão
 
+#### Scenario: Conta com papel aposentado
+- **WHEN** a migração de papéis encontra uma conta com papel que não é do Mart
+- **THEN** a conta passa ao papel de menor privilégio, continua autenticando, e a mudança fica registrada com o papel anterior e informada no log da migração
+
+#### Scenario: Token emitido antes da mudança
+- **WHEN** um token emitido com o papel antigo é apresentado depois da migração
+- **THEN** ele continua válido e a autorização usa o papel atual da conta, não o do token
+
 ### Requirement: Configuração de exemplo reflete o serviço real
 O arquivo de exemplo de variáveis de ambiente SHALL refletir a porta e os nomes deste serviço,
 de modo que um ambiente novo criado a partir dele funcione.
