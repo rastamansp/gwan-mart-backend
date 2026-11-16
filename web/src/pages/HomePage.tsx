@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ApiError,
-  catalogStats,
-  fetchAllProducts,
+  fetchCatalogStats,
   fetchFeaturedProducts,
   type CatalogStats,
   type Product,
@@ -40,14 +39,25 @@ export function HomePage() {
     };
   }, [attempt]);
 
-  // Indicadores do catálogo. Falhar aqui omite a seção e não afeta o resto da
+  // Resumo do catálogo (indicadores + categorias), calculado pela API sem
+  // baixar o catálogo. Falhar aqui omite as duas seções e não afeta o resto da
   // home — é resumo, não conteúdo principal.
   const [stats, setStats] = useState<CatalogStats | null>(null);
 
   useEffect(() => {
-    fetchAllProducts()
-      .then((all) => setStats(catalogStats(all)))
-      .catch(() => setStats(null));
+    let active = true;
+
+    fetchCatalogStats()
+      .then((data) => {
+        if (active) setStats(data);
+      })
+      .catch(() => {
+        if (active) setStats(null);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   // Contato geral: sem produto, só abre a conversa. Some quando o número não
@@ -59,9 +69,9 @@ export function HomePage() {
     origin: 'São Paulo - SP',
   });
 
-  const categoryList = Array.from(
-    new Set((products ?? []).map((product) => product.category)),
-  ).filter(Boolean);
+  // Todas as categorias com produto ativo — não só as dos destaques, senão uma
+  // categoria sem produto em destaque nunca aparece na home.
+  const categoryList = stats?.categories ?? [];
 
   return (
     <div className="space-y-12">
@@ -96,7 +106,7 @@ export function HomePage() {
       {stats && (
         <section className="grid gap-4 sm:grid-cols-3">
           <Stat value={String(stats.available)} label="produtos disponíveis" />
-          <Stat value={String(stats.categories)} label="categorias" />
+          <Stat value={String(stats.categoryCount)} label="categorias" />
           {stats.averageRating !== null && (
             <Stat
               value={stats.averageRating.toFixed(1)}
@@ -147,11 +157,12 @@ export function HomePage() {
           <div className="flex flex-wrap gap-2">
             {categoryList.map((category) => (
               <Link
-                key={category}
-                to={`/catalog?category=${encodeURIComponent(category)}`}
+                key={category.name}
+                to={`/catalog?category=${encodeURIComponent(category.name)}`}
                 className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 transition hover:border-brand-500 hover:text-brand-700"
               >
-                {category}
+                {category.name}
+                <span className="ml-1.5 text-zinc-400">{category.count}</span>
               </Link>
             ))}
           </div>
