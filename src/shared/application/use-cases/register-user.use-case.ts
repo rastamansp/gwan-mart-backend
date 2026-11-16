@@ -45,7 +45,9 @@ export class RegisterUserUseCase {
         registerDto.phone,
         undefined, // whatsappNumber - não é fornecido no registro
         null, // preferredAgentId
-        (registerDto.role as UserRole) || UserRole.USER,
+        // Fixo, sem ler nada do DTO: se um campo de papel voltar ao
+        // RegisterDto por engano, o cadastro continua sem conceder papel.
+        UserRole.USER,
         new Date(),
         new Date(),
       );
