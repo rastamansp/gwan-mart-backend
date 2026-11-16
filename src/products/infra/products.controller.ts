@@ -9,7 +9,7 @@ import {
   Query,
   ParseIntPipe,
   UseGuards,
-  Inject,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -36,6 +36,7 @@ import {
   GetAllProductsForCatalogUseCase,
   ProcessProductsIntoChunksUseCase,
   ProcessAndSaveProductsToVectorDBUseCase,
+  SearchProductsUseCase,
 } from '../application/use-cases';
 import {
   CreateProductDto,
@@ -44,8 +45,6 @@ import {
 } from '../application/dto/product.dto';
 import { BaseResponseDto } from '@/shared/application/dto/base-response.dto';
 import { RequestId } from '@/shared/infrastructure/logger/request-id.decorator';
-import { OpenAIService } from '@/shared/infrastructure/services/openai.service';
-import { IProductChunkRepository } from '../infrastructure/repositories/typeorm-product-chunk.repository';
 
 @ApiTags('products')
 @Controller('products')
@@ -62,9 +61,7 @@ export class ProductsController {
     private readonly getAllProductsForCatalogUseCase: GetAllProductsForCatalogUseCase,
     private readonly processProductsIntoChunksUseCase: ProcessProductsIntoChunksUseCase,
     private readonly processAndSaveProductsToVectorDBUseCase: ProcessAndSaveProductsToVectorDBUseCase,
-    private readonly openaiService: OpenAIService,
-    @Inject('IProductChunkRepository')
-    private readonly chunkRepository: IProductChunkRepository,
+    private readonly searchProductsUseCase: SearchProductsUseCase,
   ) {}
 
   @Post()
@@ -1372,7 +1369,11 @@ export class ProductsController {
   @ApiOperation({
     summary: 'Buscar produtos similares usando embeddings',
     description:
-      'Busca produtos similares usando inteligência artificial (OpenAI embeddings) e similaridade de cosseno. Não requer autenticação, mas é limitada por IP (429 ao exceder) porque cada chamada gera embedding pago.',
+      'Busca produtos similares usando inteligência artificial (OpenAI embeddings) e similaridade de cosseno. ' +
+      'Sem provedor de embedding configurado (OPENAI_API_KEY ausente), ou com o provedor falhando, a busca cai para ' +
+      'textual em nome, código, categoria e subcategoria (sem diferenciar caixa nem acento): a resposta continua 200, ' +
+      'com `mode: "text"` e `similarity: null` em cada resultado. Não requer autenticação, mas é limitada por IP ' +
+      '(429 ao exceder) porque cada chamada pode gerar embedding pago.',
   })
   @ApiBody({
     description: 'Query para busca por similaridade usando IA',
@@ -1385,7 +1386,7 @@ export class ProductsController {
           description:
             'Texto para busca por similaridade (ex: "smartphone Samsung", "notebook gamer", "fone bluetooth")',
           example: 'cartucho de toner HP preto',
-          minLength: 3,
+          minLength: 1,
           maxLength: 500,
         },
         limit: {
@@ -1410,6 +1411,18 @@ export class ProductsController {
           type: 'object',
           properties: {
             query: { type: 'string', example: 'cartucho de toner HP preto' },
+            mode: {
+              type: 'string',
+              enum: ['semantic', 'text'],
+              example: 'semantic',
+              description:
+                '"semantic" quando houve embedding; "text" quando a busca caiu para textual',
+            },
+            fallbackReason: {
+              type: 'string',
+              enum: ['embedding-not-configured', 'semantic-search-failed'],
+              description: 'Presente só em `mode: "text"`: por que não foi semântica',
+            },
             totalResults: { type: 'number', example: 5 },
             results: {
               type: 'array',
@@ -1433,9 +1446,10 @@ export class ProductsController {
                   },
                   similarity: {
                     type: 'number',
+                    nullable: true,
                     example: 0.95,
                     description:
-                      'Score de similaridade (0-1, onde 1 é idêntico)',
+                      'Score de similaridade (0-1, onde 1 é idêntico); null no modo textual',
                   },
                   image: {
                     type: 'string',
@@ -1488,7 +1502,7 @@ export class ProductsController {
           properties: {
             message: {
               type: 'string',
-              example: 'Query deve ter pelo menos 3 caracteres',
+              example: 'query é obrigatória e deve ter até 500 caracteres',
             },
             statusCode: { type: 'number', example: 400 },
           },
@@ -1522,71 +1536,36 @@ export class ProductsController {
     @Body() body: { query: string; limit?: number },
     @RequestId() requestId: string,
   ): Promise<BaseResponseDto<any>> {
+    const query = typeof body?.query === 'string' ? body.query.trim() : '';
+    if (!query || query.length > 500) {
+      throw new BadRequestException(
+        'query é obrigatória e deve ter até 500 caracteres',
+      );
+    }
+    const limit = Math.min(Math.max(Math.trunc(Number(body.limit) || 10), 1), 50);
+
     console.log(
-      `[${requestId}] Buscando produtos similares para query: "${body.query}"`,
+      `[${requestId}] Buscando produtos similares para query: "${query}"`,
     );
 
-    try {
-      // Gerar embedding para a query
-      const queryEmbedding = await this.openaiService.generateEmbedding(
-        body.query,
-      );
+    // Sem provedor de embedding, ou com ele falhando, o use case cai para busca
+    // textual — a falta de uma chave opcional não vira 500 para o visitante.
+    const { mode, fallbackReason, results } =
+      await this.searchProductsUseCase.execute(query, limit);
 
-      // Buscar chunks similares
-      const similarChunks = await this.chunkRepository.searchSimilar(
-        queryEmbedding,
-        body.limit || 10,
-      );
+    console.log(
+      `[${requestId}] Encontrados ${results.length} produtos (modo ${mode}${
+        fallbackReason ? `, ${fallbackReason}` : ''
+      })`,
+    );
 
-      // Calcular similaridade para cada resultado
-      const results = similarChunks.map(chunk => {
-        const chunkEmbedding = chunk.getEmbeddingVector();
-        const similarity = this.calculateCosineSimilarity(
-          queryEmbedding,
-          chunkEmbedding,
-        );
-
-        return {
-          productId: chunk.productId,
-          productCode: chunk.productCode,
-          productName: chunk.productName,
-          similarity: Math.round(similarity * 100) / 100, // Arredondar para 2 casas decimais
-          image: chunk.metadata.realImage, // Mapear imagem do metadata
-          metadata: chunk.metadata,
-        };
-      });
-
-      console.log(
-        `[${requestId}] Encontrados ${results.length} produtos similares`,
-      );
-
-      return BaseResponseDto.success({
-        query: body.query,
-        results: results,
-        totalResults: results.length,
-        timestamp: new Date().toISOString(),
-      });
-    } catch (error) {
-      console.error(`[${requestId}] Erro na busca por similaridade:`, error);
-      throw error;
-    }
-  }
-
-  private calculateCosineSimilarity(a: number[], b: number[]): number {
-    if (a.length !== b.length) {
-      throw new Error('Vetores devem ter a mesma dimensão');
-    }
-
-    let dotProduct = 0;
-    let normA = 0;
-    let normB = 0;
-
-    for (let i = 0; i < a.length; i++) {
-      dotProduct += a[i] * b[i];
-      normA += a[i] * a[i];
-      normB += b[i] * b[i];
-    }
-
-    return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+    return BaseResponseDto.success({
+      query,
+      mode,
+      ...(fallbackReason ? { fallbackReason } : {}),
+      results,
+      totalResults: results.length,
+      timestamp: new Date().toISOString(),
+    });
   }
 }

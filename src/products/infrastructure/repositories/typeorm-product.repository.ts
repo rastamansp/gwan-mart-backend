@@ -4,6 +4,12 @@ import { Repository, FindOptionsWhere, Like, Between } from 'typeorm';
 import { Product } from '../../domain/entities/product.entity';
 import { ProductImage } from '../../domain/entities/product-image.entity';
 import { IProductRepository } from '../../domain/repositories/product.repository.interface';
+import {
+  ACCENTED_CHARS,
+  PLAIN_CHARS,
+  escapeLikePattern,
+  searchTokens,
+} from '../../domain/text-search';
 
 @Injectable()
 export class TypeOrmProductRepository implements IProductRepository {
@@ -209,5 +215,52 @@ export class TypeOrmProductRepository implements IProductRepository {
     `;
 
     return await this.productRepository.query(query);
+  }
+
+  async searchByText(term: string, limit: number): Promise<Product[]> {
+    const tokens = searchTokens(term);
+    if (tokens.length === 0) {
+      return [];
+    }
+
+    // Sem `unaccent`/`pg_trgm` (extensões exigiriam migration): lower +
+    // translate com a mesma tabela aplicada ao termo. Varre a tabela — aceitável
+    // no tamanho atual do catálogo; ver a change fix-semantic-search-without-embedding.
+    const column = (name: string) =>
+      `translate(lower(product.${name}), :accented, :plain)`;
+    const fields = ['name', 'code', 'category', 'subcategory'];
+
+    const params: Record<string, string> = {
+      accented: ACCENTED_CHARS,
+      plain: PLAIN_CHARS,
+    };
+    const anyField: string[] = [];
+    const inName: string[] = [];
+    tokens.forEach((token, i) => {
+      params[`t${i}`] = `%${escapeLikePattern(token)}%`;
+      anyField.push(
+        `(${fields.map((f) => `${column(f)} LIKE :t${i}`).join(' OR ')})`,
+      );
+      inName.push(`${column('name')} LIKE :t${i}`);
+    });
+    const countOf = (conditions: string[]) =>
+      conditions.map((c) => `(CASE WHEN ${c} THEN 1 ELSE 0 END)`).join(' + ');
+
+    return (
+      this.productRepository
+        // Sem join de `images`: o resultado da busca usa `realImage`, e `take`
+        // com join não aceita ORDER BY por expressão.
+        .createQueryBuilder('product')
+        .where('product.isActive = true')
+        // Basta uma palavra casar; quem casa mais palavras vem antes, e casar
+        // no nome desempata.
+        .andWhere(`(${anyField.join(' OR ')})`)
+        .setParameters(params)
+        .orderBy(`(${countOf(anyField)})`, 'DESC')
+        .addOrderBy(`(${countOf(inName)})`, 'DESC')
+        .addOrderBy('product.name', 'ASC')
+        .limit(limit)
+        .getMany()
+    );
   }
 }

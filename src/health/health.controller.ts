@@ -14,7 +14,9 @@ export class HealthController {
     description:
       'Verifica as dependências do serviço (PostgreSQL, MinIO e Redis). ' +
       'PostgreSQL fora do ar responde 503 (unhealthy); MinIO ou Redis fora respondem 200 com status "degraded", ' +
-      'porque leitura de catálogo e chat continuam funcionando — degradação não deve reiniciar o container.',
+      'porque leitura de catálogo e chat continuam funcionando — degradação não deve reiniciar o container. ' +
+      '`dependencies.embeddings` informa a busca por similaridade: "disabled" sem OPENAI_API_KEY (não rebaixa o status), ' +
+      '"down" se a última chamada ao provedor falhou (degraded).',
   })
   @ApiResponse({ status: 200, description: 'Aplicação saudável ou degradada' })
   @ApiResponse({ status: 503, description: 'Dependência crítica indisponível' })

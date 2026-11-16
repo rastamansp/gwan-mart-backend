@@ -152,7 +152,8 @@ export interface SimilarProduct {
   productId: number;
   productName: string;
   productCode: string;
-  similarity: number;
+  /** 0–1 no modo semântico; `null` no textual, que não mede similaridade. */
+  similarity: number | null;
   metadata?: {
     price?: string;
     stock?: number;
@@ -164,20 +165,27 @@ export interface SimilarProduct {
   };
 }
 
+export interface SimilarSearchResult {
+  /**
+   * `semantic` com embeddings; `text` quando o backend não tem provedor de
+   * embedding (OPENAI_API_KEY ausente) ou ele falhou — a busca cai para nome,
+   * código e categoria em vez de responder 500. Ausente em backend anterior a
+   * essa mudança, que só respondia semântico.
+   */
+  mode?: 'semantic' | 'text';
+  results: SimilarProduct[];
+}
+
 /**
- * Busca por similaridade (embeddings).
+ * Busca por similaridade (embeddings), com queda para textual no backend.
  *
- * Depende de OPENAI_API_KEY no backend — mesmo com AI_PROVIDER=claude, porque o
- * chat é Claude mas o embedding é da OpenAI. Sem a chave a rota responde 500, e
- * a loja precisa dizer isso em vez de mostrar "nenhum resultado".
- *
- * Também tem teto de 10 chamadas/min por IP (429), por ser rota pública que gera
+ * Tem teto de 10 chamadas/min por IP (429), por ser rota pública que pode gerar
  * embedding pago.
  */
 export function searchSimilarProducts(
   query: string,
-): Promise<{ results: SimilarProduct[] }> {
-  return request<{ results: SimilarProduct[] }>('/products/search/similar', {
+): Promise<SimilarSearchResult> {
+  return request<SimilarSearchResult>('/products/search/similar', {
     method: 'POST',
     body: JSON.stringify({ query }),
   });
