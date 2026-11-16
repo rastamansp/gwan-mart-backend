@@ -34,6 +34,7 @@ import {
   GetFeaturedProductsUseCase,
   GetProductsWithFiltersUseCase,
   GetAllProductsForCatalogUseCase,
+  GetCatalogStatsUseCase,
   ProcessProductsIntoChunksUseCase,
   ProcessAndSaveProductsToVectorDBUseCase,
 } from '../application/use-cases';
@@ -60,6 +61,7 @@ export class ProductsController {
     private readonly getFeaturedProductsUseCase: GetFeaturedProductsUseCase,
     private readonly getProductsWithFiltersUseCase: GetProductsWithFiltersUseCase,
     private readonly getAllProductsForCatalogUseCase: GetAllProductsForCatalogUseCase,
+    private readonly getCatalogStatsUseCase: GetCatalogStatsUseCase,
     private readonly processProductsIntoChunksUseCase: ProcessProductsIntoChunksUseCase,
     private readonly processAndSaveProductsToVectorDBUseCase: ProcessAndSaveProductsToVectorDBUseCase,
     private readonly openaiService: OpenAIService,
@@ -831,6 +833,77 @@ export class ProductsController {
     @RequestId() _requestId: string,
   ): Promise<BaseResponseDto<any>> {
     const result = await this.getFeaturedProductsUseCase.execute();
+    return BaseResponseDto.success(result);
+  }
+
+  // Precisa ficar ANTES de @Get(':code'): o Express casa as rotas na ordem de
+  // declaração, e depois dela "stats" seria lido como código de produto.
+  @Get('stats')
+  @ApiOperation({
+    summary: 'Resumo do catálogo',
+    description:
+      'Indicadores do catálogo calculados no banco por consulta agregada, sem listar produtos: ' +
+      'produtos disponíveis (ativos com estoque), categorias com produto ativo (com a contagem ' +
+      'de ativos em cada uma) e avaliação média ponderada pelo número de avaliações. ' +
+      'Produtos excluídos não entram. Público, não requer autenticação.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Resumo calculado com sucesso',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'success' },
+        data: {
+          type: 'object',
+          properties: {
+            available: {
+              type: 'number',
+              example: 5,
+              description: 'Produtos ativos com estoque > 0',
+            },
+            categoryCount: {
+              type: 'number',
+              example: 1,
+              description: 'Quantidade de categorias com produto ativo',
+            },
+            categories: {
+              type: 'array',
+              description: 'Categorias com produto ativo, ordenadas por nome',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string', example: 'Eletrônicos' },
+                  count: {
+                    type: 'number',
+                    example: 5,
+                    description: 'Produtos ativos na categoria',
+                  },
+                },
+              },
+            },
+            averageRating: {
+              type: 'number',
+              nullable: true,
+              example: 4.5957,
+              description:
+                'Σ(nota × avaliações) / Σ avaliações dos produtos avaliados; null se nenhum foi avaliado',
+            },
+            totalReviews: {
+              type: 'number',
+              example: 1269,
+              description: 'Total de avaliações consideradas na média',
+            },
+          },
+        },
+        timestamp: { type: 'string', format: 'date-time' },
+      },
+    },
+  })
+  async getCatalogStats(
+    @RequestId() _requestId: string,
+  ): Promise<BaseResponseDto<any>> {
+    const result = await this.getCatalogStatsUseCase.execute();
     return BaseResponseDto.success(result);
   }
 

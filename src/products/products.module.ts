@@ -30,6 +30,7 @@ import {
   GetFeaturedProductsUseCase,
   GetProductsWithFiltersUseCase,
   GetAllProductsForCatalogUseCase,
+  GetCatalogStatsUseCase,
   ProcessProductsIntoChunksUseCase,
   ProcessAndSaveProductsToVectorDBUseCase,
 } from './application/use-cases';
@@ -65,6 +66,7 @@ import {
     GetFeaturedProductsUseCase,
     GetProductsWithFiltersUseCase,
     GetAllProductsForCatalogUseCase,
+    GetCatalogStatsUseCase,
     ProcessProductsIntoChunksUseCase,
     ProcessAndSaveProductsToVectorDBUseCase,
 

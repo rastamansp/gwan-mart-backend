@@ -3,7 +3,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOptionsWhere, Like, Between } from 'typeorm';
 import { Product } from '../../domain/entities/product.entity';
 import { ProductImage } from '../../domain/entities/product-image.entity';
-import { IProductRepository } from '../../domain/repositories/product.repository.interface';
+import {
+  CatalogStatsAggregate,
+  IProductRepository,
+} from '../../domain/repositories/product.repository.interface';
 
 @Injectable()
 export class TypeOrmProductRepository implements IProductRepository {
@@ -209,5 +212,54 @@ export class TypeOrmProductRepository implements IProductRepository {
     `;
 
     return await this.productRepository.query(query);
+  }
+
+  /**
+   * Resumo do catálogo para a home, calculado no banco: nenhum produto trafega.
+   *
+   * As regras são as que a loja aplicava sobre `GET /products/all` (change
+   * add-real-catalog-stats), portanto sobre a mesma população — todo produto
+   * não excluído, ativo ou não. O QueryBuilder acrescenta sozinho o
+   * `"deletedAt" IS NULL` da coluna de soft delete, como o `find()` de findAll.
+   *
+   * Exceção deliberada: categoria só conta com produto ATIVO, porque a lista da
+   * home leva ao catálogo filtrado, e o catálogo só mostra ativos.
+   */
+  async getCatalogStats(): Promise<CatalogStatsAggregate> {
+    const rated = `product."totalReviews" > 0 AND product."averageRating" > 0`;
+
+    const [totals, categories] = await Promise.all([
+      this.productRepository
+        .createQueryBuilder('product')
+        .select(
+          `COUNT(*) FILTER (WHERE product."isActive" AND product.stock > 0)`,
+          'available',
+        )
+        .addSelect(
+          `SUM(product."averageRating" * product."totalReviews") FILTER (WHERE ${rated})`,
+          'ratingWeightedSum',
+        )
+        .addSelect(
+          `SUM(product."totalReviews") FILTER (WHERE ${rated})`,
+          'totalReviews',
+        )
+        .getRawOne<Omit<CatalogStatsAggregate, 'categories'>>(),
+      this.productRepository
+        .createQueryBuilder('product')
+        .select('product.category', 'name')
+        .addSelect('COUNT(*)', 'count')
+        .where('product."isActive" = true')
+        .andWhere(`product.category IS NOT NULL AND product.category <> ''`)
+        .groupBy('product.category')
+        .orderBy('product.category', 'ASC')
+        .getRawMany<{ name: string; count: string }>(),
+    ]);
+
+    return {
+      available: totals?.available ?? 0,
+      ratingWeightedSum: totals?.ratingWeightedSum ?? null,
+      totalReviews: totals?.totalReviews ?? null,
+      categories,
+    };
   }
 }

@@ -8,6 +8,7 @@ export { DeleteProductUseCase } from './delete-product.use-case';
 export { GetFeaturedProductsUseCase } from './get-featured-products.use-case';
 export { GetProductsWithFiltersUseCase } from './get-products-with-filters.use-case';
 export { GetAllProductsForCatalogUseCase } from './get-all-products-for-catalog.use-case';
+export { GetCatalogStatsUseCase } from './get-catalog-stats.use-case';
 
 // Use Cases de Processamento de Chunks
 export { ProcessProductsIntoChunksUseCase } from './process-products-into-chunks.use-case';
