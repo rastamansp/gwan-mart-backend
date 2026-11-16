@@ -56,13 +56,13 @@ else
   exit 1
 fi
 
+# O build (`nest build`, com `include: src/**` no tsconfig) gera dist/main.js —
+# nunca dist/src/main.js. O `npm start` aponta para o mesmo arquivo, e o CI sobe
+# a API por ele, então os dois caminhos não voltam a divergir sem alguém ver.
 echo "🚀 Iniciando aplicação NestJS..."
-if [ -f dist/src/main.js ]; then
-  exec node dist/src/main.js
-elif [ -f dist/main.js ]; then
-  exec node dist/main.js
-else
-  echo "❌ main.js não encontrado em dist/."
+if [ ! -f dist/main.js ]; then
+  echo "❌ dist/main.js não encontrado. O build gerou:"
   find dist -name 'main.js' -type f
   exit 1
 fi
+exec node dist/main.js

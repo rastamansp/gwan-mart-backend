@@ -25,15 +25,14 @@ docs
 *.md
 !README.md
 
-# Tests (mas precisamos do test/bdd/support para os steps)
-# test
+# Testes (unitários *.spec.ts ao lado do código; não há mais test/ nem BDD)
 *.spec.ts
 *.test.ts
 coverage
 
-# Build artifacts (manter apenas source maps e types)
-dist/src/*.map
-dist/src/*.d.ts
+# Build local: o builder recompila (nest build com deleteOutDir), então o dist/
+# da máquina de quem builda só aumentaria o contexto
+dist
 
 # Logs
 logs
