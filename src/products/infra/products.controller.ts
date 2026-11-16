@@ -795,14 +795,15 @@ export class ProductsController {
   }
 
   @Get('admin/all')
-  @UseGuards(JwtAuthGuard, CorretorOrAdminGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Listar todos os produtos (admin)',
     description:
       'Lista todos os produtos não removidos, inclusive inativos, com os campos internos ' +
       '(`costPrice`, `supplier`, `gtinEanPackage`) que as rotas públicas não devolvem. ' +
-      'Requer ADMIN ou CORRETOR.',
+      'Requer ADMIN.',
   })
   @ApiResponse({ status: 200, description: 'Produtos listados' })
   @ApiResponse({ status: 401, description: 'Sem token válido' })
