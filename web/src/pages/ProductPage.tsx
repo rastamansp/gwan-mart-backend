@@ -446,7 +446,6 @@ export function ProductPage() {
             <Spec label="NCM" value={product.ncm} />
             <Spec label="GTIN/EAN" value={product.gtinEan} />
             <Spec label="Estoque" value={`${product.stock} unidades`} />
-            <Spec label="Fornecedor" value={product.supplier} />
             <Spec
               label="Disponível"
               value={product.isActive && !outOfStock ? 'Sim' : 'Não'}

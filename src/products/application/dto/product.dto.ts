@@ -5,10 +5,27 @@ import {
   IsBoolean,
   IsArray,
   IsUrl,
+  IsIn,
   Min,
   Max,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
+
+/** Colunas pelas quais a listagem pública pode ordenar (`price` = `originalPrice`). */
+export const PUBLIC_SORT_FIELDS = [
+  'name',
+  'code',
+  'category',
+  'subcategory',
+  'originalPrice',
+  'promotionalPrice',
+  'discountPercentage',
+  'averageRating',
+  'totalReviews',
+  'stock',
+  'createdAt',
+  'updatedAt',
+];
 
 export class CreateProductDto {
   @IsString()
@@ -246,8 +263,12 @@ export class ProductFiltersDto {
   @Max(100)
   limit?: number = 10;
 
+  // Só colunas da projeção pública: esta rota é anônima, e ordenar por
+  // `costPrice` revelaria a ordem de custo dos produtos sem devolver o campo.
+  // Coluna desconhecida virava erro do TypeORM (500); agora é 400.
   @IsOptional()
-  @IsString()
+  @Transform(({ value }) => (value === 'price' ? 'originalPrice' : value))
+  @IsIn(PUBLIC_SORT_FIELDS)
   sortBy?: string = 'createdAt';
 
   @IsOptional()

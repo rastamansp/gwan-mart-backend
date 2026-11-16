@@ -38,6 +38,8 @@
 #      aborta em vez de subir sem schema (docker-entrypoint.sh).
 #   3. As VITE_* da loja são "baked" no build. Mudar MART_API_URL exige rebuild
 #      da imagem no update da stack, não apenas restart.
+#   4. MART_WHATSAPP_NUMBER (loja) é obrigatória: sem ela o build da loja falha.
+#      É o número do pedido por WhatsApp, o único caminho de compra.
 services:
   # ---------------------------------------------------------------- API -----
   gwan-mart-backend:
@@ -173,6 +175,10 @@ services:
         # Origem pública da loja nas meta de prévia (og:image/og:url) e no
         # robots.txt. Deve casar com FRONTEND_URL da API.
         VITE_SITE_URL: ${MART_SITE_URL:-https://mart.gwan.cloud}
+        # Número do pedido por WhatsApp — único caminho de compra da loja. Sem
+        # default: vazio, o build da loja FALHA (ver web/Dockerfile), e com ele
+        # o update da stack. `none` constrói sem pedido, de propósito.
+        VITE_WHATSAPP_NUMBER: ${MART_WHATSAPP_NUMBER:-}
     container_name: gwan-mart-web
     restart: unless-stopped
 

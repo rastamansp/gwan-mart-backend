@@ -347,8 +347,8 @@ export class WebFormatterService {
       promotionalPrice: product.promotionalPrice ? Number(product.promotionalPrice) : null,
       discountPercentage: product.discountPercentage || 0,
       stock: product.stock || 0,
-      costPrice: product.costPrice ? Number(product.costPrice) : null,
-      supplier: product.supplier || null,
+      // Sem costPrice/supplier: a resposta do chat vai ao visitante, e a rota
+      // que alimenta a tool já não os devolve (ver public-product.ts).
       ncm: product.ncm || null,
       gtinEan: product.gtinEan || null,
       averageRating: Number(product.averageRating) || 0,
@@ -431,9 +431,6 @@ export class WebFormatterService {
     const rating = Number(product.averageRating) || 0;
     if (rating > 0) {
       markdown += `- **Avaliação:** ⭐ ${rating.toFixed(1)} (${product.totalReviews || 0} avaliações)\n`;
-    }
-    if (product.supplier) {
-      markdown += `- **Fornecedor:** ${product.supplier}\n`;
     }
     
     // Descrição

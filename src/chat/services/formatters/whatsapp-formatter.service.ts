@@ -244,11 +244,6 @@ export class WhatsAppFormatterService {
       message += `⭐ *Avaliação:* ${rating.toFixed(1)} (${product.totalReviews || 0} avaliações)\n`;
     }
     
-    // Fornecedor
-    if (product.supplier) {
-      message += `🏢 *Fornecedor:* ${product.supplier}\n`;
-    }
-    
     message += `\n`;
     
     // Descrição

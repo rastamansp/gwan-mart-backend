@@ -90,3 +90,42 @@ Como as `VITE_*` são baked no build, trocar `MART_API_URL` (ou `MART_SITE_URL`,
 que também vira `VITE_SITE_URL`) exige rebuild da imagem no update da stack —
 não basta reiniciar. `MART_SITE_URL` na loja e `FRONTEND_URL` na API devem ser
 o mesmo endereço: um monta as meta padrão, o outro as do produto e o sitemap.
+
+Variáveis da stack que viram build arg da loja:
+
+| Variável da stack | Build arg | Default | Para quê |
+|---|---|---|---|
+| `MART_API_URL` | `VITE_MART_API_URL` | `https://mart-api.gwan.cloud/api` | API que o navegador chama |
+| `MART_SITE_URL` | `VITE_SITE_URL` | `https://mart.gwan.cloud` | Meta de prévia e `robots.txt` |
+| `MART_WHATSAPP_NUMBER` | `VITE_WHATSAPP_NUMBER` | **nenhum — obrigatória** | Número do pedido por WhatsApp |
+
+### Pedido por WhatsApp: o build falha sem o número
+
+O pedido por WhatsApp é o **único caminho de compra** (a API não tem carrinho
+nem checkout). Sem `VITE_WHATSAPP_NUMBER`, o botão "Pedir pelo WhatsApp" vira
+"Pedido por WhatsApp indisponível" e a loja vira vitrine sem venda — sem erro
+nenhum no deploy, a página abre normal. Foi
+assim que a imagem de produção saiu sem o número: o compose não passava o
+build arg.
+
+Por isso o `Dockerfile` **recusa construir** com o número vazio ou com menos de
+10 dígitos, e confere que ele entrou no bundle. Em vez de um aviso num log de
+build que ninguém lê, o update da stack falha com a mensagem dizendo o que
+definir. Escolha: avisar só faria sentido se a loja tivesse outro jeito de
+vender.
+
+- Produção: defina `MART_WHATSAPP_NUMBER` nas variáveis da stack no Portainer,
+  só dígitos com DDI+DDD (ex.: `5511999999999`). Fica fora do repositório de
+  propósito.
+- Loja sem pedido **de propósito** (vitrine, teste de imagem, CI):
+  `VITE_WHATSAPP_NUMBER=none` — o build passa com um aviso e a página mostra
+  o pedido como indisponível.
+
+```bash
+# conferir a imagem localmente (de dentro de web/)
+docker build --build-arg VITE_WHATSAPP_NUMBER=5511999999999 -t mart-web-teste .
+docker build --build-arg VITE_WHATSAPP_NUMBER=none -t mart-web-teste .
+```
+
+Em `npm run dev` o número vem do `.env.local` (ver `.env.example`); sem ele a
+loja só marca o pedido como indisponível, sem falhar.
