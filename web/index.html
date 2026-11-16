@@ -3,11 +3,52 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#18181b" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!--
+      Previa de link (WhatsApp, Telegram, buscadores). Quem monta a previa NAO
+      executa JavaScript, entao estas meta precisam estar no HTML cru.
+
+      Os comentarios "block", "endblock" e "include" logo abaixo sao SSI do
+      nginx da loja:
+      - fora de /product/ o SSI esta desligado, eles sao ignorados e as meta
+        padrao de dentro do bloco valem como estao;
+      - em /product/:code o nginx troca o bloco pelo head daquele produto,
+        pedido a API (GET /api/seo/products/:code/head). Se a API falhar ou o
+        produto nao existir, o "stub" devolve as meta padrao.
+      Ver openspec/changes/add-storefront-seo/design.md e web/nginx.conf.
+    -->
+    <!--# block name="seo_default" -->
     <title>Gwan Mart</title>
     <meta
       name="description"
       content="Loja do Gwan Mart — eletrônicos, acessórios e mais, com atendimento por IA."
     />
+    <link rel="canonical" href="%VITE_SITE_URL%/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Gwan Mart" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:title" content="Gwan Mart" />
+    <meta
+      property="og:description"
+      content="Eletrônicos, acessórios e mais, com atendimento por IA. Peça pelo WhatsApp."
+    />
+    <meta property="og:url" content="%VITE_SITE_URL%/" />
+    <meta property="og:image" content="%VITE_SITE_URL%/og-default.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Gwan Mart" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Gwan Mart" />
+    <meta
+      name="twitter:description"
+      content="Eletrônicos, acessórios e mais, com atendimento por IA. Peça pelo WhatsApp."
+    />
+    <meta name="twitter:image" content="%VITE_SITE_URL%/og-default.png" />
+    <!--# endblock -->
+    <!--# include virtual="/__seo/product" stub="seo_default" -->
   </head>
   <body>
     <div id="root"></div>

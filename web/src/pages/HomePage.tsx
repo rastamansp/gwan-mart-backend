@@ -11,8 +11,10 @@ import {
 import { ProductCard } from '../components/ProductCard';
 import { EmptyState, ErrorState, LoadingGrid } from '../components/States';
 import { buildOrderUrl } from '../lib/whatsapp';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 export function HomePage() {
+  useDocumentTitle();
   const [products, setProducts] = useState<Product[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
