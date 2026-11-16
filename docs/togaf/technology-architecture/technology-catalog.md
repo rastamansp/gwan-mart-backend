@@ -86,11 +86,11 @@ Este documento cataloga todas as **tecnologias** utilizadas na plataforma Litora
 - **Uso**: Interface unificada para cache
 - **Justificativa**: Abstração, múltiplos backends
 
-**cache-manager-redis-store**
-- **Versão**: 3.x
-- **Tipo**: Redis adapter
+**@keyv/redis**
+- **Versão**: 5.x
+- **Tipo**: Redis adapter (Keyv)
 - **Uso**: Integração Redis com cache-manager
-- **Justificativa**: Compatibilidade com NestJS cache
+- **Justificativa**: O cache-manager v7 roda sobre Keyv. O `cache-manager-redis-store` 3.x, usado antes, era ignorado em silêncio por essa versão e deixava o cache em memória (issue #5)
 
 ### 5. Autenticação e Segurança
 

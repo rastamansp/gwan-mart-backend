@@ -175,7 +175,9 @@ export class HealthService {
       throw new Error('cache não configurado');
     }
     const key = 'health:ping';
-    await this.cache.set(key, '1', 5);
+    // TTL em milissegundos (cache-manager v7). Valia `5` quando se lia como
+    // segundos: no Redis a chave expirava antes do `get` e o check oscilava.
+    await this.cache.set(key, '1', 5000);
     const value = await this.cache.get(key);
     if (value !== '1') {
       throw new Error('cache não devolveu o valor gravado');
