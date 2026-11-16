@@ -204,7 +204,7 @@ Adicione as seguintes variáveis no arquivo `.env`:
 EVOLUTION_INSTANCE_URL=http://localhost:8080
 EVOLUTION_INSTANCE=09BA00F4FE55-4C37-859A-5743BE3BD4E7
 # ou
-EVOLUTION_API_KEY=09BA00F4FE55-4C37-859A-5743BE3BD4E7
+EVOLUTION_API_KEY=<chave-da-evolution>
 ```
 
 **Nota**: 
