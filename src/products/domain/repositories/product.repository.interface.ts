@@ -35,4 +35,10 @@ export interface IProductRepository {
     totalPages: number;
   }>;
   findAllForCatalog(): Promise<Product[]>;
+  /**
+   * Busca textual em nome, código, categoria e subcategoria dos produtos
+   * ativos, sem diferenciar caixa nem acento. É o caminho da busca do catálogo
+   * quando não há provedor de embedding.
+   */
+  searchByText(term: string, limit: number): Promise<Product[]>;
 }

@@ -1,7 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
-import { IEmbeddingService } from '../../application/interfaces/embedding-service.interface';
+import {
+  EmbeddingProviderStatus,
+  IEmbeddingService,
+} from '../../application/interfaces/embedding-service.interface';
 
 @Injectable()
 export class EmbeddingService implements IEmbeddingService {
@@ -10,6 +13,8 @@ export class EmbeddingService implements IEmbeddingService {
   private readonly embeddingModel: string;
   private embeddingDimension: number | null = null; // Será detectado automaticamente
   private readonly apiBaseUrl = 'https://api.openai.com/v1';
+  /** Última falha do provedor; limpa no próximo sucesso. Lida pelo health. */
+  private lastFailure: { message: string; at: string } | null = null;
 
   constructor(private readonly configService: ConfigService) {
     this.openaiApiKey = this.configService.get<string>('OPENAI_API_KEY') || '';
@@ -30,7 +35,7 @@ export class EmbeddingService implements IEmbeddingService {
   }
 
   async generateEmbedding(text: string): Promise<number[]> {
-    if (!this.openaiApiKey) {
+    if (!this.isConfigured()) {
       throw new Error('OPENAI_API_KEY não configurada');
     }
 
@@ -100,9 +105,19 @@ export class EmbeddingService implements IEmbeddingService {
         this.embeddingDimension = embedding.length;
       }
 
+      this.lastFailure = null;
       this.logger.debug(`Embedding gerado com sucesso (${embedding.length} dimensões, modelo: ${this.embeddingModel})`);
       return embedding;
     } catch (error) {
+      this.lastFailure = {
+        message: axios.isAxiosError(error)
+          ? error.response?.data?.error?.message || error.message
+          : error instanceof Error
+            ? error.message
+            : String(error),
+        at: new Date().toISOString(),
+      };
+
       // Capturar erros do axios e mostrar detalhes
       if (axios.isAxiosError(error)) {
         this.logger.error('Erro na requisição à API OpenAI', {
@@ -148,6 +163,23 @@ export class EmbeddingService implements IEmbeddingService {
 
   getModel(): string {
     return this.embeddingModel;
+  }
+
+  isConfigured(): boolean {
+    return this.openaiApiKey.trim().length > 0;
+  }
+
+  getStatus(): EmbeddingProviderStatus {
+    if (!this.isConfigured()) {
+      return { configured: false };
+    }
+    return this.lastFailure
+      ? {
+          configured: true,
+          lastError: this.lastFailure.message,
+          lastErrorAt: this.lastFailure.at,
+        }
+      : { configured: true };
   }
 }
 

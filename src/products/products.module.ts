@@ -32,6 +32,7 @@ import {
   GetAllProductsForCatalogUseCase,
   ProcessProductsIntoChunksUseCase,
   ProcessAndSaveProductsToVectorDBUseCase,
+  SearchProductsUseCase,
 } from './application/use-cases';
 
 /**
@@ -67,6 +68,7 @@ import {
     GetAllProductsForCatalogUseCase,
     ProcessProductsIntoChunksUseCase,
     ProcessAndSaveProductsToVectorDBUseCase,
+    SearchProductsUseCase,
 
     // Repositories
     TypeOrmProductRepository,

@@ -12,3 +12,6 @@ export { GetAllProductsForCatalogUseCase } from './get-all-products-for-catalog.
 // Use Cases de Processamento de Chunks
 export { ProcessProductsIntoChunksUseCase } from './process-products-into-chunks.use-case';
 export { ProcessAndSaveProductsToVectorDBUseCase } from './process-and-save-products-to-vector-db.use-case';
+
+// Busca do catálogo (semântica com queda para textual)
+export { SearchProductsUseCase } from './search-products.use-case';

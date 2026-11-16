@@ -40,6 +40,9 @@ export function CatalogPage() {
   const [aiResults, setAiResults] = useState<SimilarProduct[] | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  // O backend cai para busca textual quando não tem provedor de embedding (ou
+  // ele falha). Aí não há grau de similaridade para mostrar.
+  const [aiTextFallback, setAiTextFallback] = useState(false);
 
   useEffect(() => setTerm(search), [search]);
 
@@ -108,14 +111,16 @@ export function CatalogPage() {
     setAiLoading(true);
     setAiError(null);
     setAiResults(null);
+    setAiTextFallback(false);
 
     try {
       const data = await searchSimilarProducts(query.trim());
+      setAiTextFallback(data.mode === 'text');
       setAiResults(data.results ?? []);
     } catch (caught) {
-      // Três causas distintas, três mensagens: o 500 aqui quase sempre é falta
-      // de OPENAI_API_KEY no servidor, e dizer "nenhum resultado" mandaria o
-      // visitante procurar defeito na própria busca.
+      // Três causas distintas, três mensagens: dizer "nenhum resultado" num
+      // erro mandaria o visitante procurar defeito na própria busca. (Falta de
+      // OPENAI_API_KEY não chega aqui: o backend cai para busca textual.)
       if (caught instanceof ApiError && caught.status === 429) {
         setAiError(
           'Muitas buscas seguidas. Aguarde um minuto antes de tentar de novo.',
@@ -159,8 +164,10 @@ export function CatalogPage() {
         )}
         {aiMode && aiResults && (
           <p className="text-sm text-zinc-500">
-            {aiResults.length} produto{aiResults.length === 1 ? '' : 's'} similar
-            {aiResults.length === 1 ? '' : 'es'}
+            {aiResults.length} produto{aiResults.length === 1 ? '' : 's'}{' '}
+            {aiTextFallback
+              ? `encontrado${aiResults.length === 1 ? '' : 's'}`
+              : `similar${aiResults.length === 1 ? '' : 'es'}`}
           </p>
         )}
       </div>
@@ -298,6 +305,7 @@ export function CatalogPage() {
           loading={aiLoading}
           error={aiError}
           results={aiResults}
+          textFallback={aiTextFallback}
         />
       ) : (
         <>
@@ -376,10 +384,12 @@ function SimilaritySection({
   loading,
   error,
   results,
+  textFallback,
 }: {
   loading: boolean;
   error: string | null;
   results: SimilarProduct[] | null;
+  textFallback: boolean;
 }) {
   if (loading) return <LoadingGrid count={4} />;
 
@@ -400,33 +410,56 @@ function SimilaritySection({
     );
   }
 
+  const notice = textFallback && (
+    <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+      A busca por similaridade está indisponível no momento. Mostrando resultados
+      por texto (nome, código e categoria).
+    </p>
+  );
+
   if (results.length === 0) {
-    return <EmptyState title="Nenhum produto similar encontrado" />;
+    return (
+      <div className="space-y-3">
+        {notice}
+        <EmptyState
+          title={
+            textFallback
+              ? 'Nenhum produto encontrado'
+              : 'Nenhum produto similar encontrado'
+          }
+        />
+      </div>
+    );
   }
 
   return (
-    <ul className="grid gap-3 md:grid-cols-2">
-      {results.map((item) => (
-        <li key={item.productCode}>
-          <a
-            href={`/product/${encodeURIComponent(item.productCode)}`}
-            className="flex items-center justify-between gap-4 rounded-xl border border-zinc-200 bg-white p-4 transition hover:border-brand-500"
-          >
-            <span>
-              <span className="block font-medium text-zinc-900">
-                {item.productName}
+    <div className="space-y-3">
+      {notice}
+      <ul className="grid gap-3 md:grid-cols-2">
+        {results.map((item) => (
+          <li key={item.productCode}>
+            <a
+              href={`/product/${encodeURIComponent(item.productCode)}`}
+              className="flex items-center justify-between gap-4 rounded-xl border border-zinc-200 bg-white p-4 transition hover:border-brand-500"
+            >
+              <span>
+                <span className="block font-medium text-zinc-900">
+                  {item.productName}
+                </span>
+                <span className="block text-sm text-zinc-500">
+                  {item.productCode}
+                  {item.metadata?.category && ` · ${item.metadata.category}`}
+                </span>
               </span>
-              <span className="block text-sm text-zinc-500">
-                {item.productCode}
-                {item.metadata?.category && ` · ${item.metadata.category}`}
-              </span>
-            </span>
-            <span className="shrink-0 rounded-full bg-brand-100 px-3 py-1 text-sm font-semibold text-brand-700">
-              {Math.round(item.similarity * 100)}%
-            </span>
-          </a>
-        </li>
-      ))}
-    </ul>
+              {item.similarity !== null && (
+                <span className="shrink-0 rounded-full bg-brand-100 px-3 py-1 text-sm font-semibold text-brand-700">
+                  {Math.round(item.similarity * 100)}%
+                </span>
+              )}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
