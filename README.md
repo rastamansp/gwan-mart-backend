@@ -2,6 +2,29 @@
 
 Backend da plataforma Gwan Mart - E-commerce completo para venda de produtos, construído com NestJS e TypeScript, seguindo os princípios de **Clean Architecture** e **SOLID**.
 
+| | |
+|---|---|
+| **Loja** | `web/` → `mart.gwan.cloud` |
+| **API** | `src/` → `mart-api.gwan.cloud` |
+| **Board** | [GitHub Project 11 — Gwan Mart](https://github.com/users/rastamansp/projects/11) |
+| **Orquestração** | `apps/mart-backend/` no monorepo `gwan-infra` (infra de dev, slot 11, estado de produção) |
+
+## 🧭 Onde o Mart vive no ecossistema
+
+Decidido em 2026-11-16:
+
+- **Este repo é o dono do catálogo e da loja.** A loja fica só em `mart.gwan.cloud`. O site
+  institucional (`gwan.cloud`, repo `gwan-ia`) mantém apenas a apresentação em `/gwan-mart`, e
+  `/gwan-mart/catalog` e `/gwan-mart/product/:code` redirecionam para `/catalog` e `/product/:code`
+  daqui ([rastamansp/gwan-ia#1](https://github.com/rastamansp/gwan-ia/pull/1)). Por isso essas duas
+  rotas da loja são contrato: mudar uma quebra o redirecionamento e os links do bot.
+- **Logins separados.** O Mart tem os próprios usuários. O login de `gwan.cloud` é do `gwan-backend`
+  e não deve ser unificado com este.
+- **O módulo `products` do `gwan-backend` é uma cópia antiga deste.** Ele nasceu lá e foi copiado para
+  cá em 2025-11, e só este lado evoluiu. Correção e evolução de catálogo vêm para cá.
+- ⚠️ O admin de produtos que hoje existe no institucional grava pelo `gwan-backend`, num banco que
+  esta loja não lê. Trazer o admin para cá é a issue #13.
+
 ## 🚀 Funcionalidades
 
 - **Gestão de Produtos**: Sistema completo para gerenciamento de produtos, categorias, estoque e preços
