@@ -441,11 +441,11 @@ Ver documentação completa em `docs/deployment/`.
 ## 🧪 Testes
 
 ```bash
-# Testes unitários
+# Testes unitários (Jest, *.spec.ts ao lado do código; falha se não achar teste)
 npm run test
 
-# Testes e2e
-npm run test:e2e
+# Smoke de papéis contra uma API no ar (exige um usuário ADMIN existente)
+MART_API=http://localhost:3011/api MART_ADMIN_EMAIL=... MART_ADMIN_PASSWORD=... npm run test:smoke:roles
 
 # Coverage
 npm run test:cov

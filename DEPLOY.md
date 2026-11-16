@@ -10,9 +10,10 @@ O projeto possui deploy automático configurado via GitHub Actions. Para fazer d
 # Desenvolver funcionalidade
 npm run start:dev
 
-# Testar localmente
+# Testar localmente (o CI roda os mesmos passos: ver .github/workflows/ci.yml)
+npm run lint
 npm run test
-npm run test:e2e
+npm run test:smoke:roles   # com a API no ar e MART_ADMIN_EMAIL/MART_ADMIN_PASSWORD
 
 # Gerar documentação
 npm run docs:generate
@@ -60,7 +61,7 @@ npm run deploy:rollback
 ### Desenvolvimento
 - `npm run start:dev` - Desenvolvimento com hot reload
 - `npm run test` - Testes unitários
-- `npm run test:e2e` - Testes e2e
+- `npm run test:smoke:roles` - Smoke de papéis contra a API no ar
 - `npm run lint` - Linting
 
 ### Documentação
