@@ -22,7 +22,9 @@ import {
   ApiExtension,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/auth/guards/jwt-auth.guard';
-import { CorretorOrAdminGuard } from '@/auth/guards/corretor-or-admin.guard';
+import { RolesGuard } from '@/auth/guards/roles.guard';
+import { Roles } from '@/auth/guards/roles.decorator';
+import { UserRole } from '@/shared/domain/value-objects/user-role.enum';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import {
   CreateProductUseCase,
@@ -67,7 +69,9 @@ export class ProductsController {
   ) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard, CorretorOrAdminGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiResponse({ status: 403, description: 'Usuário autenticado sem papel ADMIN' })
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Criar novo produto',
@@ -351,7 +355,9 @@ export class ProductsController {
   }
 
   @Post('import')
-  @UseGuards(JwtAuthGuard, CorretorOrAdminGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiResponse({ status: 403, description: 'Usuário autenticado sem papel ADMIN' })
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Importar múltiplos produtos',
@@ -1014,7 +1020,9 @@ export class ProductsController {
   }
 
   @Put(':id')
-  @UseGuards(JwtAuthGuard, CorretorOrAdminGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiResponse({ status: 403, description: 'Usuário autenticado sem papel ADMIN' })
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Atualizar produto',
@@ -1295,7 +1303,9 @@ export class ProductsController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, CorretorOrAdminGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiResponse({ status: 403, description: 'Usuário autenticado sem papel ADMIN' })
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Deletar produto (soft delete)',
@@ -1368,7 +1378,9 @@ export class ProductsController {
   }
 
   @Post('catalog/update/:id')
-  @UseGuards(JwtAuthGuard, CorretorOrAdminGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiResponse({ status: 403, description: 'Usuário autenticado sem papel ADMIN' })
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Atualizar catálogo do produto',

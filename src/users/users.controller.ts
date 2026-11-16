@@ -5,7 +5,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/guards/roles.decorator';
 import { assertSelfOrAdmin } from './assert-self-or-admin';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody, ApiOkResponse, ApiExtraModels } from '@nestjs/swagger';
-import { PromoteUserToCorretorUseCase } from '../shared/application/use-cases/promote-user-to-corretor.use-case';
+import { PromoteUserUseCase } from '../shared/application/use-cases/promote-user.use-case';
 import { PromoteUserDto } from '../shared/presentation/dtos/promote-user.dto';
 import { UpdateUserDto } from '../shared/presentation/dtos/update-user.dto';
 import { InsufficientPermissionsFilter } from '../shared/presentation/filters/insufficient-permissions.filter';
@@ -25,7 +25,7 @@ export class UsersController {
   constructor(
     @Inject('IUserRepository')
     private readonly userRepository: IUserRepository,
-    private readonly promoteUserToCorretorUseCase: PromoteUserToCorretorUseCase,
+    private readonly promoteUserUseCase: PromoteUserUseCase,
   ) {}
 
   @Get()
@@ -210,7 +210,7 @@ export class UsersController {
   @UseFilters(InsufficientPermissionsFilter)
   @ApiOperation({ 
     summary: 'Promover usuário',
-    description: 'Promove um usuário para um role superior (ex: USER → CORRETOR). Apenas ADMIN pode promover usuários. O usuário que está promovendo deve ter permissões adequadas.'
+    description: 'Promove um usuário a ADMIN (USER → ADMIN). Apenas ADMIN pode promover usuários. O usuário que está promovendo deve ter permissões adequadas.'
   })
   @ApiParam({ 
     name: 'id', 
@@ -222,12 +222,6 @@ export class UsersController {
     type: PromoteUserDto,
     description: 'Dados da promoção',
     examples: {
-      promoverParaCorretor: {
-        summary: 'Promover para Corretor (padrão)',
-        value: {
-          targetRole: 'CORRETOR'
-        }
-      },
       promoverParaAdmin: {
         summary: 'Promover para Administrador',
         value: {
@@ -235,7 +229,7 @@ export class UsersController {
         }
       },
       semRole: {
-        summary: 'Usar role padrão (CORRETOR)',
+        summary: 'Usar role padrão (ADMIN)',
         value: {}
       }
     }
@@ -249,7 +243,7 @@ export class UsersController {
         name: 'João Silva',
         email: 'joao@email.com',
         phone: '11999999999',
-        role: 'CORRETOR',
+        role: 'ADMIN',
         createdAt: '2024-01-15T10:30:00.000Z',
         updatedAt: '2024-01-29T14:45:00.000Z'
       }
@@ -266,9 +260,9 @@ export class UsersController {
     @Request() req: any,
   ): Promise<UserResponseDto> {
     const promoterUserId = req.user.id;
-    const targetRole = promoteUserDto.targetRole || UserRole.CORRETOR;
+    const targetRole = promoteUserDto.targetRole || UserRole.ADMIN;
 
-    const promoted = await this.promoteUserToCorretorUseCase.execute(targetUserId, promoterUserId, targetRole);
+    const promoted = await this.promoteUserUseCase.execute(targetUserId, promoterUserId, targetRole);
     // Pelo DTO de resposta: devolver a entidade expunha o hash bcrypt da senha.
     return UserResponseDto.fromEntity(promoted);
   }

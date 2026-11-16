@@ -69,10 +69,6 @@ export class User {
   }
 
 
-  public isCorretor(): boolean {
-    return this.role === UserRole.CORRETOR;
-  }
-
   public canManageUsers(): boolean {
     return this.role === UserRole.ADMIN;
   }

@@ -44,16 +44,7 @@ Authorization: Bearer {{token}}
   "phone": "11987654321"
 }
 
-### 4. Promover usuário para Corretor (apenas ADMIN)
-PUT {{baseUrl}}/users/{{userId}}/promote
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "targetRole": "CORRETOR"
-}
-
-### 4.1. Promover usuário para Administrador
+### 4. Promover usuário para Administrador (apenas ADMIN)
 PUT {{baseUrl}}/users/{{userId}}/promote
 Content-Type: application/json
 Authorization: Bearer {{token}}
@@ -62,7 +53,7 @@ Authorization: Bearer {{token}}
   "targetRole": "ADMIN"
 }
 
-### 4.2. Promover usuário (sem especificar role - usa CORRETOR por padrão)
+### 4.1. Promover usuário (sem especificar role - usa ADMIN por padrão)
 PUT {{baseUrl}}/users/{{userId}}/promote
 Content-Type: application/json
 Authorization: Bearer {{token}}

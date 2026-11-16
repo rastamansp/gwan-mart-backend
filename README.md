@@ -28,7 +28,7 @@ Decidido em 2026-11-16:
 ## 🚀 Funcionalidades
 
 - **Gestão de Produtos**: Sistema completo para gerenciamento de produtos, categorias, estoque e preços
-- **Autenticação**: JWT com Passport e roles (USER, ORGANIZER, ADMIN)
+- **Autenticação**: JWT com Passport e papéis USER e ADMIN (ADMIN administra o catálogo)
 - **Chatbot Inteligente**: Agente conversacional via OpenAI integrado com MCP para atendimento sobre produtos
 - **MCP Server**: Model Context Protocol para integração com IA
 - **Administração**: Dashboard administrativo
@@ -52,7 +52,7 @@ Decidido em 2026-11-16:
 ### Autenticação e Segurança
 - **JWT** com Passport para autenticação stateless
 - **bcryptjs** para hash de senhas
-- Roles: USER, ORGANIZER, ADMIN
+- Papéis: USER, ADMIN
 
 ### IA e Conversational Agents
 - **OpenAI API** - GPT para chatbot inteligente

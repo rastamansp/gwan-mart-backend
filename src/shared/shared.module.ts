@@ -25,7 +25,7 @@ import { IUserCreditRepository } from './domain/interfaces/user-credit-repositor
 import { IAgentRepository } from './domain/interfaces/agent-repository.interface';
 import { RegisterUserUseCase } from './application/use-cases/register-user.use-case';
 import { LoginUserUseCase } from './application/use-cases/login-user.use-case';
-import { PromoteUserToCorretorUseCase } from './application/use-cases/promote-user-to-corretor.use-case';
+import { PromoteUserUseCase } from './application/use-cases/promote-user.use-case';
 import { CreateOrFindConversationUseCase } from './application/use-cases/create-or-find-conversation.use-case';
 import { SaveMessageUseCase } from './application/use-cases/save-message.use-case';
 import { RegisterUserViaWhatsappUseCase } from './application/use-cases/register-user-via-whatsapp.use-case';
@@ -108,7 +108,7 @@ import { forwardRef } from '@nestjs/common';
     // Use Cases
     RegisterUserUseCase,
     LoginUserUseCase,
-    PromoteUserToCorretorUseCase,
+    PromoteUserUseCase,
     CreateOrFindConversationUseCase,
     SaveMessageUseCase,
     RegisterUserViaWhatsappUseCase,
@@ -133,7 +133,7 @@ import { forwardRef } from '@nestjs/common';
     'IImageProcessorService',
     RegisterUserUseCase,
     LoginUserUseCase,
-    PromoteUserToCorretorUseCase,
+    PromoteUserUseCase,
     CreateOrFindConversationUseCase,
     SaveMessageUseCase,
     RegisterUserViaWhatsappUseCase,

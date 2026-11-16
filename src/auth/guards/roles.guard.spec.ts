@@ -39,7 +39,8 @@ describe('RolesGuard', () => {
 
   it('recusa papel fora da lista', () => {
     expect(guard.canActivate(contexto(SoAdmin, { role: UserRole.USER }))).toBe(false);
-    expect(guard.canActivate(contexto(SoAdmin, { role: UserRole.CORRETOR }))).toBe(false);
+    // Papel aposentado na #6: um registro que ainda o carregue não passa.
+    expect(guard.canActivate(contexto(SoAdmin, { role: 'CORRETOR' }))).toBe(false);
   });
 
   it('aceita papel da lista', () => {
