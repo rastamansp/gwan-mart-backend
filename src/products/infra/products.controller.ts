@@ -9,7 +9,7 @@ import {
   Query,
   ParseIntPipe,
   UseGuards,
-  Inject,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -22,7 +22,9 @@ import {
   ApiExtension,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/auth/guards/jwt-auth.guard';
-import { CorretorOrAdminGuard } from '@/auth/guards/corretor-or-admin.guard';
+import { RolesGuard } from '@/auth/guards/roles.guard';
+import { Roles } from '@/auth/guards/roles.decorator';
+import { UserRole } from '@/shared/domain/value-objects/user-role.enum';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import {
   CreateProductUseCase,
@@ -34,18 +36,23 @@ import {
   GetFeaturedProductsUseCase,
   GetProductsWithFiltersUseCase,
   GetAllProductsForCatalogUseCase,
+  GetCatalogStatsUseCase,
   ProcessProductsIntoChunksUseCase,
   ProcessAndSaveProductsToVectorDBUseCase,
+  SearchProductsUseCase,
 } from '../application/use-cases';
 import {
   CreateProductDto,
   UpdateProductDto,
   ProductFiltersDto,
+  PUBLIC_SORT_FIELDS,
 } from '../application/dto/product.dto';
+import {
+  toPublicProduct,
+  toPublicProducts,
+} from '../application/public-product';
 import { BaseResponseDto } from '@/shared/application/dto/base-response.dto';
 import { RequestId } from '@/shared/infrastructure/logger/request-id.decorator';
-import { OpenAIService } from '@/shared/infrastructure/services/openai.service';
-import { IProductChunkRepository } from '../infrastructure/repositories/typeorm-product-chunk.repository';
 
 @ApiTags('products')
 @Controller('products')
@@ -60,15 +67,16 @@ export class ProductsController {
     private readonly getFeaturedProductsUseCase: GetFeaturedProductsUseCase,
     private readonly getProductsWithFiltersUseCase: GetProductsWithFiltersUseCase,
     private readonly getAllProductsForCatalogUseCase: GetAllProductsForCatalogUseCase,
+    private readonly getCatalogStatsUseCase: GetCatalogStatsUseCase,
     private readonly processProductsIntoChunksUseCase: ProcessProductsIntoChunksUseCase,
     private readonly processAndSaveProductsToVectorDBUseCase: ProcessAndSaveProductsToVectorDBUseCase,
-    private readonly openaiService: OpenAIService,
-    @Inject('IProductChunkRepository')
-    private readonly chunkRepository: IProductChunkRepository,
+    private readonly searchProductsUseCase: SearchProductsUseCase,
   ) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard, CorretorOrAdminGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiResponse({ status: 403, description: 'Usuário autenticado sem papel ADMIN' })
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Criar novo produto',
@@ -352,7 +360,9 @@ export class ProductsController {
   }
 
   @Post('import')
-  @UseGuards(JwtAuthGuard, CorretorOrAdminGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiResponse({ status: 403, description: 'Usuário autenticado sem papel ADMIN' })
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Importar múltiplos produtos',
@@ -635,7 +645,9 @@ export class ProductsController {
   @ApiQuery({
     name: 'sortBy',
     required: false,
-    description: 'Campo para ordenação (name, price, createdAt, updatedAt)',
+    description:
+      'Campo para ordenação. `price` é sinônimo de `originalPrice`; outro valor responde 400.',
+    enum: [...PUBLIC_SORT_FIELDS, 'price'],
     example: 'name',
   })
   @ApiQuery({
@@ -671,7 +683,6 @@ export class ProductsController {
                   isFeatured: { type: 'boolean', example: false },
                   category: { type: 'string', example: 'Eletrônicos' },
                   subcategory: { type: 'string', example: 'Smartphones' },
-                  supplier: { type: 'string', example: 'Fornecedor ABC' },
                   realImage: {
                     type: 'string',
                     example: 'https://example.com/image.jpg',
@@ -720,7 +731,10 @@ export class ProductsController {
     @RequestId() _requestId: string,
   ): Promise<BaseResponseDto<any>> {
     const result = await this.getProductsWithFiltersUseCase.execute(filters);
-    return BaseResponseDto.success(result);
+    return BaseResponseDto.success({
+      ...result,
+      products: toPublicProducts(result.products),
+    });
   }
 
   @Get('all')
@@ -752,7 +766,6 @@ export class ProductsController {
               isFeatured: { type: 'boolean', example: false },
               category: { type: 'string', example: 'Eletrônicos' },
               subcategory: { type: 'string', example: 'Smartphones' },
-              supplier: { type: 'string', example: 'Fornecedor ABC' },
               realImage: {
                 type: 'string',
                 example: 'https://example.com/image.jpg',
@@ -771,6 +784,31 @@ export class ProductsController {
     },
   })
   async getAllProducts(
+    @RequestId() _requestId: string,
+  ): Promise<BaseResponseDto<any>> {
+    // O repositório devolve também os inativos (o admin precisa deles); a
+    // vitrine não. Para o admin: GET /products/admin/all.
+    const result = await this.getAllProductsUseCase.execute();
+    return BaseResponseDto.success(
+      toPublicProducts(result.filter((product) => product.isActive)),
+    );
+  }
+
+  @Get('admin/all')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Listar todos os produtos (admin)',
+    description:
+      'Lista todos os produtos não removidos, inclusive inativos, com os campos internos ' +
+      '(`costPrice`, `supplier`, `gtinEanPackage`) que as rotas públicas não devolvem. ' +
+      'Requer ADMIN.',
+  })
+  @ApiResponse({ status: 200, description: 'Produtos listados' })
+  @ApiResponse({ status: 401, description: 'Sem token válido' })
+  @ApiResponse({ status: 403, description: 'Papel sem acesso ao catálogo' })
+  async getAllProductsForAdmin(
     @RequestId() _requestId: string,
   ): Promise<BaseResponseDto<any>> {
     const result = await this.getAllProductsUseCase.execute();
@@ -807,7 +845,6 @@ export class ProductsController {
               isFeatured: { type: 'boolean', example: true },
               category: { type: 'string', example: 'Eletrônicos' },
               subcategory: { type: 'string', example: 'Smartphones' },
-              supplier: { type: 'string', example: 'Fornecedor ABC' },
               realImage: {
                 type: 'string',
                 example: 'https://example.com/featured-image.jpg',
@@ -831,6 +868,77 @@ export class ProductsController {
     @RequestId() _requestId: string,
   ): Promise<BaseResponseDto<any>> {
     const result = await this.getFeaturedProductsUseCase.execute();
+    return BaseResponseDto.success(toPublicProducts(result));
+  }
+
+  // Precisa ficar ANTES de @Get(':code'): o Express casa as rotas na ordem de
+  // declaração, e depois dela "stats" seria lido como código de produto.
+  @Get('stats')
+  @ApiOperation({
+    summary: 'Resumo do catálogo',
+    description:
+      'Indicadores do catálogo calculados no banco por consulta agregada, sem listar produtos: ' +
+      'produtos disponíveis (ativos com estoque), categorias com produto ativo (com a contagem ' +
+      'de ativos em cada uma) e avaliação média ponderada pelo número de avaliações. ' +
+      'Produtos excluídos não entram. Público, não requer autenticação.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Resumo calculado com sucesso',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'success' },
+        data: {
+          type: 'object',
+          properties: {
+            available: {
+              type: 'number',
+              example: 5,
+              description: 'Produtos ativos com estoque > 0',
+            },
+            categoryCount: {
+              type: 'number',
+              example: 1,
+              description: 'Quantidade de categorias com produto ativo',
+            },
+            categories: {
+              type: 'array',
+              description: 'Categorias com produto ativo, ordenadas por nome',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string', example: 'Eletrônicos' },
+                  count: {
+                    type: 'number',
+                    example: 5,
+                    description: 'Produtos ativos na categoria',
+                  },
+                },
+              },
+            },
+            averageRating: {
+              type: 'number',
+              nullable: true,
+              example: 4.5957,
+              description:
+                'Σ(nota × avaliações) / Σ avaliações dos produtos avaliados; null se nenhum foi avaliado',
+            },
+            totalReviews: {
+              type: 'number',
+              example: 1269,
+              description: 'Total de avaliações consideradas na média',
+            },
+          },
+        },
+        timestamp: { type: 'string', format: 'date-time' },
+      },
+    },
+  })
+  async getCatalogStats(
+    @RequestId() _requestId: string,
+  ): Promise<BaseResponseDto<any>> {
+    const result = await this.getCatalogStatsUseCase.execute();
     return BaseResponseDto.success(result);
   }
 
@@ -867,10 +975,7 @@ export class ProductsController {
             description: { type: 'string' },
             ncm: { type: 'string', example: '85171200' },
             stock: { type: 'number', example: 100 },
-            costPrice: { type: 'number', example: 500.0 },
-            supplier: { type: 'string', example: 'Fornecedor ABC' },
             gtinEan: { type: 'string', example: '1234567890123' },
-            gtinEanPackage: { type: 'string', example: '1234567890123' },
             supplierProductDescription: { type: 'string' },
             thumbnail: {
               type: 'string',
@@ -940,11 +1045,13 @@ export class ProductsController {
     @RequestId() _requestId: string,
   ): Promise<BaseResponseDto<any>> {
     const result = await this.getProductByCodeUseCase.execute(code);
-    return BaseResponseDto.success(result);
+    return BaseResponseDto.success(toPublicProduct(result));
   }
 
   @Put(':id')
-  @UseGuards(JwtAuthGuard, CorretorOrAdminGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiResponse({ status: 403, description: 'Usuário autenticado sem papel ADMIN' })
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Atualizar produto',
@@ -1225,7 +1332,9 @@ export class ProductsController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, CorretorOrAdminGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiResponse({ status: 403, description: 'Usuário autenticado sem papel ADMIN' })
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Deletar produto (soft delete)',
@@ -1298,7 +1407,9 @@ export class ProductsController {
   }
 
   @Post('catalog/update/:id')
-  @UseGuards(JwtAuthGuard, CorretorOrAdminGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiResponse({ status: 403, description: 'Usuário autenticado sem papel ADMIN' })
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Atualizar catálogo do produto',
@@ -1372,7 +1483,11 @@ export class ProductsController {
   @ApiOperation({
     summary: 'Buscar produtos similares usando embeddings',
     description:
-      'Busca produtos similares usando inteligência artificial (OpenAI embeddings) e similaridade de cosseno. Não requer autenticação, mas é limitada por IP (429 ao exceder) porque cada chamada gera embedding pago.',
+      'Busca produtos similares usando inteligência artificial (OpenAI embeddings) e similaridade de cosseno. ' +
+      'Sem provedor de embedding configurado (OPENAI_API_KEY ausente), ou com o provedor falhando, a busca cai para ' +
+      'textual em nome, código, categoria e subcategoria (sem diferenciar caixa nem acento): a resposta continua 200, ' +
+      'com `mode: "text"` e `similarity: null` em cada resultado. Não requer autenticação, mas é limitada por IP ' +
+      '(429 ao exceder) porque cada chamada pode gerar embedding pago.',
   })
   @ApiBody({
     description: 'Query para busca por similaridade usando IA',
@@ -1385,7 +1500,7 @@ export class ProductsController {
           description:
             'Texto para busca por similaridade (ex: "smartphone Samsung", "notebook gamer", "fone bluetooth")',
           example: 'cartucho de toner HP preto',
-          minLength: 3,
+          minLength: 1,
           maxLength: 500,
         },
         limit: {
@@ -1410,6 +1525,18 @@ export class ProductsController {
           type: 'object',
           properties: {
             query: { type: 'string', example: 'cartucho de toner HP preto' },
+            mode: {
+              type: 'string',
+              enum: ['semantic', 'text'],
+              example: 'semantic',
+              description:
+                '"semantic" quando houve embedding; "text" quando a busca caiu para textual',
+            },
+            fallbackReason: {
+              type: 'string',
+              enum: ['embedding-not-configured', 'semantic-search-failed'],
+              description: 'Presente só em `mode: "text"`: por que não foi semântica',
+            },
             totalResults: { type: 'number', example: 5 },
             results: {
               type: 'array',
@@ -1433,9 +1560,10 @@ export class ProductsController {
                   },
                   similarity: {
                     type: 'number',
+                    nullable: true,
                     example: 0.95,
                     description:
-                      'Score de similaridade (0-1, onde 1 é idêntico)',
+                      'Score de similaridade (0-1, onde 1 é idêntico); null no modo textual',
                   },
                   image: {
                     type: 'string',
@@ -1488,7 +1616,7 @@ export class ProductsController {
           properties: {
             message: {
               type: 'string',
-              example: 'Query deve ter pelo menos 3 caracteres',
+              example: 'query é obrigatória e deve ter até 500 caracteres',
             },
             statusCode: { type: 'number', example: 400 },
           },
@@ -1522,71 +1650,36 @@ export class ProductsController {
     @Body() body: { query: string; limit?: number },
     @RequestId() requestId: string,
   ): Promise<BaseResponseDto<any>> {
+    const query = typeof body?.query === 'string' ? body.query.trim() : '';
+    if (!query || query.length > 500) {
+      throw new BadRequestException(
+        'query é obrigatória e deve ter até 500 caracteres',
+      );
+    }
+    const limit = Math.min(Math.max(Math.trunc(Number(body.limit) || 10), 1), 50);
+
     console.log(
-      `[${requestId}] Buscando produtos similares para query: "${body.query}"`,
+      `[${requestId}] Buscando produtos similares para query: "${query}"`,
     );
 
-    try {
-      // Gerar embedding para a query
-      const queryEmbedding = await this.openaiService.generateEmbedding(
-        body.query,
-      );
+    // Sem provedor de embedding, ou com ele falhando, o use case cai para busca
+    // textual — a falta de uma chave opcional não vira 500 para o visitante.
+    const { mode, fallbackReason, results } =
+      await this.searchProductsUseCase.execute(query, limit);
 
-      // Buscar chunks similares
-      const similarChunks = await this.chunkRepository.searchSimilar(
-        queryEmbedding,
-        body.limit || 10,
-      );
+    console.log(
+      `[${requestId}] Encontrados ${results.length} produtos (modo ${mode}${
+        fallbackReason ? `, ${fallbackReason}` : ''
+      })`,
+    );
 
-      // Calcular similaridade para cada resultado
-      const results = similarChunks.map(chunk => {
-        const chunkEmbedding = chunk.getEmbeddingVector();
-        const similarity = this.calculateCosineSimilarity(
-          queryEmbedding,
-          chunkEmbedding,
-        );
-
-        return {
-          productId: chunk.productId,
-          productCode: chunk.productCode,
-          productName: chunk.productName,
-          similarity: Math.round(similarity * 100) / 100, // Arredondar para 2 casas decimais
-          image: chunk.metadata.realImage, // Mapear imagem do metadata
-          metadata: chunk.metadata,
-        };
-      });
-
-      console.log(
-        `[${requestId}] Encontrados ${results.length} produtos similares`,
-      );
-
-      return BaseResponseDto.success({
-        query: body.query,
-        results: results,
-        totalResults: results.length,
-        timestamp: new Date().toISOString(),
-      });
-    } catch (error) {
-      console.error(`[${requestId}] Erro na busca por similaridade:`, error);
-      throw error;
-    }
-  }
-
-  private calculateCosineSimilarity(a: number[], b: number[]): number {
-    if (a.length !== b.length) {
-      throw new Error('Vetores devem ter a mesma dimensão');
-    }
-
-    let dotProduct = 0;
-    let normA = 0;
-    let normB = 0;
-
-    for (let i = 0; i < a.length; i++) {
-      dotProduct += a[i] * b[i];
-      normA += a[i] * a[i];
-      normB += b[i] * b[i];
-    }
-
-    return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+    return BaseResponseDto.success({
+      query,
+      mode,
+      ...(fallbackReason ? { fallbackReason } : {}),
+      results,
+      totalResults: results.length,
+      timestamp: new Date().toISOString(),
+    });
   }
 }

@@ -30,8 +30,10 @@ import {
   GetFeaturedProductsUseCase,
   GetProductsWithFiltersUseCase,
   GetAllProductsForCatalogUseCase,
+  GetCatalogStatsUseCase,
   ProcessProductsIntoChunksUseCase,
   ProcessAndSaveProductsToVectorDBUseCase,
+  SearchProductsUseCase,
 } from './application/use-cases';
 
 /**
@@ -65,8 +67,10 @@ import {
     GetFeaturedProductsUseCase,
     GetProductsWithFiltersUseCase,
     GetAllProductsForCatalogUseCase,
+    GetCatalogStatsUseCase,
     ProcessProductsIntoChunksUseCase,
     ProcessAndSaveProductsToVectorDBUseCase,
+    SearchProductsUseCase,
 
     // Repositories
     TypeOrmProductRepository,
@@ -88,6 +92,7 @@ import {
   ],
   exports: [
     // Use Cases
+    GetProductByCodeUseCase,
     CreateProductUseCase,
     GetProductByIdUseCase,
     GetAllProductsUseCase,

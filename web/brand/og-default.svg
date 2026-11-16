@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <!--
+    Fonte da imagem de prévia padrão (public/og-default.png, 1200x630).
+    Regerar: ver web/README.md, seção "Prévia de link (SEO)".
+  -->
+  <rect width="1200" height="630" fill="#fafafa"/>
+  <rect x="0" y="0" width="1200" height="12" fill="#f59e0b"/>
+  <g transform="translate(96 175) scale(4.4)">
+    <rect width="64" height="64" rx="14" fill="#18181b"/>
+    <path d="M24 26v-6a8 8 0 0 1 16 0v6" fill="none" stroke="#f59e0b" stroke-width="3" stroke-linecap="round"/>
+    <path d="M12 23h40l-3.5 27a4 4 0 0 1-4 3.5H19.5a4 4 0 0 1-4-3.5z" fill="#f59e0b"/>
+    <path d="M37.3 33.7A7 7 0 1 0 39 39H33" fill="none" stroke="#18181b" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g font-family="DejaVu Sans, Arial, sans-serif">
+    <text x="440" y="285" font-size="104" font-weight="bold" fill="#18181b">Gwan <tspan fill="#d97706">Mart</tspan></text>
+    <text x="444" y="360" font-size="36" fill="#3f3f46">Eletrônicos, acessórios e mais</text>
+    <text x="444" y="408" font-size="36" fill="#3f3f46">com atendimento por IA.</text>
+    <text x="444" y="488" font-size="30" font-weight="bold" fill="#b45309">mart.gwan.cloud</text>
+  </g>
+</svg>

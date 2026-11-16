@@ -1,8 +1,0 @@
-# Relatórios do Cucumber
-reports/
-*.json
-*.html
-
-# Logs
-*.log
-

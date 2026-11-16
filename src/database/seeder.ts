@@ -18,9 +18,6 @@ export class DatabaseSeeder {
     // Criar usuário admin
     await this.createAdminUser();
     
-    // Criar usuário vendedor
-    await this.createCorretorUser();
-    
     // Criar usuário comum
     await this.createRegularUser();
 
@@ -47,26 +44,6 @@ export class DatabaseSeeder {
       
       await this.userRepository.save(adminUser);
       console.log('👤 Usuário admin criado');
-    }
-  }
-
-  private async createCorretorUser(): Promise<void> {
-    const existingCorretor = await this.userRepository.findOne({ 
-      where: { email: 'vendedor@gwan.cloud' } 
-    });
-    
-    if (!existingCorretor) {
-      const corretorUser = User.create(
-        'vendedor-user-id',
-        'João Silva Vendedor',
-        'vendedor@gwan.cloud',
-        await bcrypt.hash('corretor123', 10),
-        '+5511888888888',
-        UserRole.CORRETOR,
-      );
-      
-      await this.userRepository.save(corretorUser);
-      console.log('👤 Usuário vendedor criado');
     }
   }
 

@@ -576,37 +576,14 @@ CREATE TABLE product_images (
 - Suporta ordenação
 - Retorna resultado paginado
 
-## 🧪 Testes BDD
+## 🧪 Testes
 
-### Feature: Gerenciamento de Produtos
-```gherkin
-Feature: Gerenciamento de Produtos
-  Como um usuário do sistema
-  Eu quero gerenciar produtos
-  Para que eu possa criar, listar, atualizar e deletar produtos
+A antiga feature BDD (`products-listing.feature`) saiu do repositório: não tinha
+nenhum step implementado e descrevia rotas `/api/v1/products` que esta API não expõe.
+Os testes do módulo são unitários (Jest), ao lado do código:
 
-  Scenario: Listar todos os produtos
-    Given que existem produtos cadastrados no sistema
-    When eu faço uma requisição GET para "/api/v1/products"
-    Then a resposta deve ter status 200
-    And a resposta deve conter uma lista de produtos
-    And cada produto deve ter os campos obrigatórios
-
-  Scenario: Buscar produto por ID
-    Given que existe um produto com ID "1" cadastrado
-    When eu faço uma requisição GET para "/api/v1/products/1"
-    Then a resposta deve ter status 200
-    And a resposta deve conter os dados do produto
-    And o produto deve ter o ID "1"
-```
-
-### Execução dos Testes
 ```bash
-# Executar testes BDD de produtos
-pnpm run bdd
-
-# Executar testes específicos
-npx cucumber-js tests/bdd/features/products-listing.feature
+npm test -- src/products
 ```
 
 ## 🔒 Segurança

@@ -1,5 +1,21 @@
 import { Product } from '../entities/product.entity';
 
+/**
+ * Agregados do catálogo como o banco os devolve: o driver do PostgreSQL entrega
+ * `bigint` (COUNT/SUM de int) e `numeric` como string, e SUM sem nenhuma linha
+ * vem `null`. A conversão para número fica no use case.
+ */
+export interface CatalogStatsAggregate {
+  /** Produtos ativos com estoque > 0. */
+  available: string | number | null;
+  /** Σ(averageRating × totalReviews) dos produtos avaliados. */
+  ratingWeightedSum: string | number | null;
+  /** Σ totalReviews dos mesmos produtos — o denominador da média. */
+  totalReviews: string | number | null;
+  /** Categorias não vazias com produto ativo, e quantos ativos cada uma tem. */
+  categories: Array<{ name: string; count: string | number }>;
+}
+
 export interface IProductRepository {
   create(product: Product): Promise<Product>;
   findById(id: number): Promise<Product | null>;
@@ -35,4 +51,11 @@ export interface IProductRepository {
     totalPages: number;
   }>;
   findAllForCatalog(): Promise<Product[]>;
+  /**
+   * Busca textual em nome, código, categoria e subcategoria dos produtos
+   * ativos, sem diferenciar caixa nem acento. É o caminho da busca do catálogo
+   * quando não há provedor de embedding.
+   */
+  searchByText(term: string, limit: number): Promise<Product[]>;
+  getCatalogStats(): Promise<CatalogStatsAggregate>;
 }

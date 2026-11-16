@@ -15,7 +15,6 @@ export class AdminService {
     return {
       users: {
         total: users.length,
-        corretores: users.filter(u => u.role === UserRole.CORRETOR).length,
         customers: users.filter(u => u.role === UserRole.USER).length,
         admins: users.filter(u => u.role === UserRole.ADMIN).length,
       },

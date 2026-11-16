@@ -35,10 +35,9 @@ RUN echo "=== Iniciando build ===" && \
     echo "=== Build concluido ===" && \
     echo "=== Verificando estrutura dist/ ===" && \
     find dist -type f -name "*.js" 2>&1 | head -20 && \
-    echo "=== Procurando main.js ===" && \
-    find dist -name "main.js" -type f 2>&1 && \
-    echo "=== Procurando app.module.js ===" && \
-    find dist -name "app.module.js" -type f 2>&1
+    echo "=== Conferindo dist/main.js (caminho do entrypoint e do npm start) ===" && \
+    test -f dist/main.js && test -f dist/app.module.js && \
+    test -f dist/config/data-source.js
 
 # ========================================
 # PRODUCTION STAGE
@@ -67,8 +66,7 @@ COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
 
 # Log informativo da estrutura copiada
 RUN echo "=== Estrutura dist/ copiada ===" && \
-    ls -la dist/ 2>&1 | head -10 && \
-    (test -d dist/src && echo "=== Estrutura dist/src/ ===" && ls -la dist/src/ 2>&1 | head -10 || echo "AVISO: dist/src/ nao existe") || true
+    ls -la dist/ 2>&1 | head -10
 
 # Copiar toda a estrutura src/ para MCP poder executar (bootstrap precisa de toda a estrutura)
 COPY --from=builder --chown=nestjs:nodejs /app/src ./src

@@ -4,8 +4,13 @@ import { DataSource } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { IStorageService } from '../shared/application/interfaces/storage-service.interface';
+import { IEmbeddingService } from '../shared/application/interfaces/embedding-service.interface';
 
-export type DependencyState = 'up' | 'down';
+/**
+ * `disabled`: dependência opcional que não foi configurada. Não é queda — é
+ * escolha de ambiente —, então não rebaixa o status geral.
+ */
+export type DependencyState = 'up' | 'down' | 'disabled';
 export type ServiceStatus = 'ok' | 'degraded' | 'unhealthy';
 
 export interface DependencyReport {
@@ -14,6 +19,8 @@ export interface DependencyReport {
   error?: string;
   /** Se a queda derruba o serviço ou apenas o degrada. */
   critical: boolean;
+  /** O que a dependência sustenta, quando o estado afeta uma função visível. */
+  detail?: string;
 }
 
 export interface HealthReport {
@@ -39,6 +46,11 @@ export interface HealthReport {
  *    sem upload de imagem ou sem cache, e derrubar o container por causa deles
  *    trocaria uma degradação por uma indisponibilidade (mesmo critério do
  *    gwan-watt, que responde `degraded` com MinIO fora).
+ *  - O provedor de embedding (`embeddings`) sustenta só a busca por
+ *    similaridade, que cai para textual sem ele. A chave é opcional: ausente,
+ *    é `disabled` e o status não muda; presente e falhando, é `down` não
+ *    crítico → `degraded`. Não é sondado — chamar o provedor a cada 30s seria
+ *    gasto pago —, o estado vem da última chamada real.
  */
 @Injectable()
 export class HealthService {
@@ -56,6 +68,9 @@ export class HealthService {
     @Optional()
     @Inject(CACHE_MANAGER)
     private readonly cache?: Cache,
+    @Optional()
+    @Inject('IEmbeddingService')
+    private readonly embedding?: IEmbeddingService,
   ) {}
 
   async check(): Promise<HealthReport> {
@@ -65,7 +80,12 @@ export class HealthService {
       this.probe(() => this.checkCache(), false),
     ]);
 
-    const dependencies = { database, storage, cache };
+    const dependencies = {
+      database,
+      storage,
+      cache,
+      embeddings: this.embeddingReport(),
+    };
 
     const anyCriticalDown = Object.values(dependencies).some(
       (d) => d.critical && d.status === 'down',
@@ -79,6 +99,35 @@ export class HealthService {
       environment: process.env.NODE_ENV || 'development',
       version: process.env.npm_package_version || '1.0.0',
       dependencies,
+    };
+  }
+
+  private embeddingReport(): DependencyReport {
+    const status = this.embedding?.getStatus();
+
+    if (!status?.configured) {
+      return {
+        status: 'disabled',
+        critical: false,
+        detail:
+          'busca por similaridade indisponível (OPENAI_API_KEY ausente); a busca do catálogo usa modo textual',
+      };
+    }
+
+    if (status.lastError) {
+      return {
+        status: 'down',
+        critical: false,
+        error: `${status.lastError} (em ${status.lastErrorAt})`,
+        detail:
+          'última chamada ao provedor de embedding falhou; a busca do catálogo cai para modo textual até a próxima chamada bem-sucedida',
+      };
+    }
+
+    return {
+      status: 'up',
+      critical: false,
+      detail: 'busca por similaridade disponível',
     };
   }
 
@@ -126,7 +175,9 @@ export class HealthService {
       throw new Error('cache não configurado');
     }
     const key = 'health:ping';
-    await this.cache.set(key, '1', 5);
+    // TTL em milissegundos (cache-manager v7). Valia `5` quando se lia como
+    // segundos: no Redis a chave expirava antes do `get` e o check oscilava.
+    await this.cache.set(key, '1', 5000);
     const value = await this.cache.get(key);
     if (value !== '1') {
       throw new Error('cache não devolveu o valor gravado');

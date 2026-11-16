@@ -44,7 +44,7 @@ export interface Product {
   category: string;
   subcategory: string;
   stock: number;
-  supplier: string;
+  // Sem `supplier`/`costPrice`: dado comercial, a API pública não devolve.
   ncm: string;
   /** Descricao do fornecedor: mais completa que `description` quando existe. */
   supplierProductDescription?: string;
@@ -152,42 +152,57 @@ export interface SimilarProduct {
   productId: number;
   productName: string;
   productCode: string;
-  similarity: number;
+  /** 0–1 no modo semântico; `null` no textual, que não mede similaridade. */
+  similarity: number | null;
   metadata?: {
     price?: string;
     stock?: number;
     category?: string;
     subcategory?: string;
-    supplier?: string;
     isActive?: boolean;
     isFeatured?: boolean;
   };
 }
 
+export interface SimilarSearchResult {
+  /**
+   * `semantic` com embeddings; `text` quando o backend não tem provedor de
+   * embedding (OPENAI_API_KEY ausente) ou ele falhou — a busca cai para nome,
+   * código e categoria em vez de responder 500. Ausente em backend anterior a
+   * essa mudança, que só respondia semântico.
+   */
+  mode?: 'semantic' | 'text';
+  results: SimilarProduct[];
+}
+
 /**
- * Busca por similaridade (embeddings).
+ * Busca por similaridade (embeddings), com queda para textual no backend.
  *
- * Depende de OPENAI_API_KEY no backend — mesmo com AI_PROVIDER=claude, porque o
- * chat é Claude mas o embedding é da OpenAI. Sem a chave a rota responde 500, e
- * a loja precisa dizer isso em vez de mostrar "nenhum resultado".
- *
- * Também tem teto de 10 chamadas/min por IP (429), por ser rota pública que gera
+ * Tem teto de 10 chamadas/min por IP (429), por ser rota pública que pode gerar
  * embedding pago.
  */
 export function searchSimilarProducts(
   query: string,
-): Promise<{ results: SimilarProduct[] }> {
-  return request<{ results: SimilarProduct[] }>('/products/search/similar', {
+): Promise<SimilarSearchResult> {
+  return request<SimilarSearchResult>('/products/search/similar', {
     method: 'POST',
     body: JSON.stringify({ query }),
   });
 }
 
+export interface CatalogCategory {
+  name: string;
+  /** Produtos ativos na categoria — o que o catálogo lista ao filtrar por ela. */
+  count: number;
+}
+
 export interface CatalogStats {
   /** Produtos ativos e com estoque. */
   available: number;
-  /** Categorias distintas no catálogo. */
-  categories: number;
+  /** Quantas categorias têm produto ativo (= `categories.length`). */
+  categoryCount: number;
+  /** Categorias com produto ativo, por nome. */
+  categories: CatalogCategory[];
   /** Média ponderada pelo nº de avaliações — `null` se ninguém avaliou. */
   averageRating: number | null;
   /** Total de avaliações que entraram na média. */
@@ -195,42 +210,18 @@ export interface CatalogStats {
 }
 
 /**
- * Resumo do catálogo para a home.
+ * Resumo do catálogo para a home, calculado pela API (`GET /products/stats`).
  *
- * A média é **ponderada** pelo número de avaliações: um produto com 3
- * avaliações não pode pesar o mesmo que um com 234. E é `null` quando ninguém
- * avaliou — exibir "0.0" diria que o catálogo é ruim, não que falta avaliação.
+ * Antes a home baixava o catálogo inteiro para chegar a três números. As regras
+ * são as mesmas, agora no banco: disponível = ativo com estoque; média
+ * **ponderada** pelo número de avaliações e `null` quando ninguém avaliou —
+ * exibir "0.0" diria que o catálogo é ruim, não que falta avaliação.
  *
  * Números que a API não sustenta (vendas, clientes atendidos) não têm função
  * aqui: a versão do site institucional os traz escritos no código.
  */
-export function catalogStats(products: Product[]): CatalogStats {
-  const available = products.filter(
-    (product) => product.isActive && product.stock > 0,
-  ).length;
-
-  const categories = new Set(
-    products.map((product) => product.category).filter(Boolean),
-  ).size;
-
-  let weighted = 0;
-  let totalReviews = 0;
-
-  for (const product of products) {
-    const reviews = product.totalReviews ?? 0;
-    const rating = toNumber(product.averageRating);
-    if (reviews > 0 && rating > 0) {
-      weighted += rating * reviews;
-      totalReviews += reviews;
-    }
-  }
-
-  return {
-    available,
-    categories,
-    averageRating: totalReviews > 0 ? weighted / totalReviews : null,
-    totalReviews,
-  };
+export function fetchCatalogStats(): Promise<CatalogStats> {
+  return request<CatalogStats>('/products/stats');
 }
 
 /** Variações utilizáveis: tolera `null` e formatos inesperados do campo json. */
