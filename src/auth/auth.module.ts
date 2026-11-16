@@ -7,6 +7,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { SharedModule } from '../shared/shared.module';
 import { resolveJwtSecret } from './jwt-secret';
+import { RolesGuard } from './guards/roles.guard';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { resolveJwtSecret } from './jwt-secret';
     }),
   ],
   controllers: [AuthController],
-  providers: [JwtStrategy, LocalStrategy],
+  providers: [JwtStrategy, LocalStrategy, RolesGuard],
+  exports: [RolesGuard],
 })
 export class AuthModule {}

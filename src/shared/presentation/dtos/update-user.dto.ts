@@ -1,6 +1,5 @@
-import { IsString, IsOptional, IsEmail, IsEnum, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsEmail, MaxLength } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { UserRole } from '../../domain/value-objects/user-role.enum';
 
 export class UpdateUserDto {
   @ApiPropertyOptional({ 
@@ -31,13 +30,7 @@ export class UpdateUserDto {
   @IsString()
   phone?: string;
 
-  @ApiPropertyOptional({ 
-    description: 'Role/permissão do usuário. Apenas ADMIN pode alterar roles.',
-    enum: UserRole,
-    example: UserRole.CORRETOR,
-    enumName: 'UserRole'
-  })
-  @IsOptional()
-  @IsEnum(UserRole, { message: 'Role deve ser USER, CORRETOR ou ADMIN' })
-  role?: UserRole;
+  // Sem papel: a edição de cadastro não troca papel, nem quando feita por
+  // ADMIN. O único caminho é PUT /users/:id/promote. Com forbidNonWhitelisted
+  // no ValidationPipe global, um corpo com papel responde 400.
 }
