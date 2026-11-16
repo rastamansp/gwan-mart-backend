@@ -3,6 +3,11 @@
 # Substitui o antigo deploy.yml, que rodava `npm run deploy:prod` (build + docs +
 # um `echo` de sucesso) e anunciava "Deploy to Production" sem publicar coisa
 # alguma. Deploy do ecossistema GWAN é exclusivamente via Portainer.
+#
+# Dois jobs, um por artefato publicado:
+#   api  — lint, build, migrations em banco limpo, testes unitários e, por fim,
+#          a API compilada subindo por `npm start` com o smoke de papéis contra ela
+#   web  — lint e build da loja (web/)
 name: CI
 
 on:
@@ -12,10 +17,12 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-test:
+  api:
     runs-on: ubuntu-latest
 
     services:
+      # Mesma imagem do PostgreSQL de dev (gwan-mart-dev-postgres). O schema não
+      # usa pgvector: o embedding é guardado como texto (ver InitialSchema).
       postgres:
         image: postgres:16-alpine
         env:
@@ -34,9 +41,32 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gwan_mart_ci
       # Sem valor padrão no código: a aplicação recusa iniciar sem isso.
       JWT_SECRET: ci-secret-nao-usar-fora-do-ci-000000
+      # O MinioStorageService cria/confere o bucket no boot e derruba a API se o
+      # MinIO não responder — por isso o MinIO sobe antes do `npm start`.
+      MINIO_ENDPOINT: localhost
+      MINIO_PORT: '9000'
+      MINIO_USE_SSL: 'false'
+      MINIO_ACCESS_KEY: minio-ci
+      MINIO_SECRET_KEY: minio-ci-secret
+      MINIO_BUCKET: gwan-mart-ci
+      PORT: '3011'
+      MART_API: http://localhost:3011/api
+      MART_ADMIN_EMAIL: smoke-admin@test.local
+      MART_ADMIN_PASSWORD: smoke-admin-senha-ci-123
 
     steps:
       - uses: actions/checkout@v4
+
+      # MinIO não vira `services:` porque a imagem precisa do comando
+      # `server /data`, e service container não aceita comando. Sobe aqui, cedo,
+      # para estar de pé quando a API precisar. Mesma imagem do MinIO de dev
+      # (o minio/minio saiu do Docker Hub e do quay.io).
+      - name: Subir MinIO
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER="$MINIO_ACCESS_KEY" \
+            -e MINIO_ROOT_PASSWORD="$MINIO_SECRET_KEY" \
+            pgsty/minio:RELEASE.2026-08-04T00-00-00Z server /data
 
       - uses: actions/setup-node@v4
         with:
@@ -46,6 +76,8 @@ jobs:
       - name: Instalar dependências
         run: npm ci
 
+      # Sem --fix: com ele o passo corrigia o checkout do runner e passava, e o
+      # erro continuava no repositório.
       - name: Lint
         run: npm run lint
 
@@ -60,18 +92,100 @@ jobs:
           npm run typeorm:migration:run
           npm run typeorm:migration:run
 
+      # Uma conexão só, com o `pg` que já é dependência. Antes era um `npx ts-node -e`
+      # por tabela: oito compilações, e no Windows o shim do npx corta o argumento
+      # na primeira quebra de linha — o passo passava sem verificar nada.
       - name: Verificar tabelas criadas
         run: |
-          for t in users products product_images product_chunks conversations messages agents user_credits; do
-            npx ts-node -e "
-              import { DataSource } from 'typeorm';
-              const ds = new DataSource({ type: 'postgres', url: process.env.DATABASE_URL });
-              ds.initialize()
-                .then(() => ds.query(\"SELECT to_regclass('public.$t') IS NOT NULL AS ok\"))
-                .then(([r]) => { if (!r.ok) { throw new Error('tabela ausente: $t'); } console.log('ok: $t'); return ds.destroy(); })
-                .catch((e) => { console.error(e.message); process.exit(1); });
-            "
-          done
+          node -e "
+            const { Client } = require('pg');
+            const esperadas = ['users', 'products', 'product_images', 'product_chunks',
+              'conversations', 'messages', 'agents', 'user_credits'];
+            const c = new Client({ connectionString: process.env.DATABASE_URL });
+            c.connect()
+              .then(() => c.query('SELECT t, to_regclass(\'public.\' || t) IS NOT NULL AS ok FROM unnest(\$1::text[]) AS t', [esperadas]))
+              .then(({ rows }) => {
+                rows.forEach((r) => console.log((r.ok ? 'ok:      ' : 'AUSENTE: ') + r.t));
+                if (rows.some((r) => !r.ok)) process.exitCode = 1;
+                return c.end();
+              })
+              .catch((e) => { console.error(e.message); process.exit(1); });
+          "
 
-      - name: Testes
-        run: npm test
+      # Jest sem --passWithNoTests: se o testRegex deixar de achar arquivos, o
+      # passo falha em vez de passar vazio.
+      - name: Testes unitários
+        run: npm test -- --ci
+
+      # Sobe a API pelo mesmo `npm start` que se usa fora do Docker. Até a issue #8
+      # ele apontava para dist/src/main.js, que o build nunca gerou.
+      - name: Subir a API compilada (npm start)
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:9000/minio/health/live > /dev/null && break
+            sleep 1
+          done
+          nohup npm start > api.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:3011/api/health; then echo; exit 0; fi
+            sleep 1
+          done
+          echo "API não respondeu /api/health em 60s"
+          exit 1
+
+      # admin:create grava o papel na posição errada do User.create (nasce USER;
+      # ver lock-role-assignment, tarefa 5.1). A promoção explícita mantém o smoke
+      # independente desse defeito e vira no-op quando ele for corrigido.
+      - name: Criar o ADMIN do smoke
+        env:
+          ADMIN_EMAIL: ${{ env.MART_ADMIN_EMAIL }}
+          ADMIN_PASSWORD: ${{ env.MART_ADMIN_PASSWORD }}
+        run: |
+          npm run admin:create
+          node -e "
+            const { Client } = require('pg');
+            const c = new Client({ connectionString: process.env.DATABASE_URL });
+            c.connect()
+              .then(() => c.query(\"UPDATE users SET role = 'ADMIN' WHERE email = \$1\", [process.env.ADMIN_EMAIL]))
+              .then((r) => { if (r.rowCount !== 1) throw new Error('ADMIN do smoke não encontrado'); return c.end(); })
+              .catch((e) => { console.error(e.message); process.exit(1); });
+          "
+
+      - name: Smoke de papéis contra a API real
+        run: npm run test:smoke:roles
+
+      - name: Log da API
+        if: always()
+        run: cat api.log || true
+
+  web:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            web/package-lock.json
+
+      # A loja não declara ESLint: o `npm run lint` dela sobe até o .eslintrc.js
+      # da raiz (root: true) e usa o eslint e o parser TS instalados na raiz.
+      # Sem o `npm ci` da raiz, o lint da loja não roda.
+      - name: Instalar dependências (raiz, para o ESLint)
+        run: npm ci
+
+      - name: Instalar dependências da loja
+        working-directory: web
+        run: npm ci
+
+      - name: Lint da loja
+        working-directory: web
+        run: npm run lint
+
+      - name: Build da loja
+        working-directory: web
+        run: npm run build
