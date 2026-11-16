@@ -3,6 +3,23 @@ import { HomePage } from './pages/HomePage';
 import { CatalogPage } from './pages/CatalogPage';
 import { ProductPage } from './pages/ProductPage';
 import { ChatPanel } from './components/ChatPanel';
+import { useDocumentTitle } from './lib/useDocumentTitle';
+
+function NotFound() {
+  useDocumentTitle('Página não encontrada');
+
+  return (
+    <div className="py-16 text-center">
+      <p className="text-lg font-medium text-zinc-800">Página não encontrada</p>
+      <Link
+        to="/"
+        className="mt-4 inline-block rounded-lg bg-zinc-900 px-5 py-2 font-medium text-white transition hover:bg-zinc-700"
+      >
+        Voltar ao início
+      </Link>
+    </div>
+  );
+}
 
 export function App() {
   return (
@@ -29,22 +46,7 @@ export function App() {
           <Route path="/catalog" element={<CatalogPage />} />
           {/* Mesma rota que o backend monta em buildProductUrl(). */}
           <Route path="/product/:code" element={<ProductPage />} />
-          <Route
-            path="*"
-            element={
-              <div className="py-16 text-center">
-                <p className="text-lg font-medium text-zinc-800">
-                  Página não encontrada
-                </p>
-                <Link
-                  to="/"
-                  className="mt-4 inline-block rounded-lg bg-zinc-900 px-5 py-2 font-medium text-white transition hover:bg-zinc-700"
-                >
-                  Voltar ao início
-                </Link>
-              </div>
-            }
-          />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
 

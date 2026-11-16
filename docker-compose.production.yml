@@ -11,6 +11,12 @@
 # chama a API é o navegador do visitante. Por isso não há `depends_on` — a loja
 # sobe e serve HTML mesmo com a API fora, mostrando o próprio estado de erro.
 #
+# Exceção: a **prévia de link** (Open Graph por produto) e o `sitemap.xml`. O
+# WhatsApp não executa JavaScript, então é o nginx da loja quem pede à API, pela
+# rede interna (MART_API_UPSTREAM), as meta tags do produto. Ele resolve o nome
+# da API a cada requisição e cai nas meta padrão se ela não responder — a loja
+# continua subindo e abrindo sem a API. Ver openspec/changes/add-storefront-seo.
+#
 # Deploy é EXCLUSIVAMENTE via Portainer (Stacks → Add/Update stack). Nunca
 # `docker compose up` por SSH no servidor.
 #
@@ -164,8 +170,16 @@ services:
         VITE_MART_API_URL: ${MART_API_URL:-https://mart-api.gwan.cloud/api}
         VITE_APP_NAME: ${MART_APP_NAME:-Gwan Mart}
         VITE_APP_VERSION: ${MART_APP_VERSION:-0.1.0}
+        # Origem pública da loja nas meta de prévia (og:image/og:url) e no
+        # robots.txt. Deve casar com FRONTEND_URL da API.
+        VITE_SITE_URL: ${MART_SITE_URL:-https://mart.gwan.cloud}
     container_name: gwan-mart-web
     restart: unless-stopped
+
+    environment:
+      # API na rede interna, só para a prévia por produto e o sitemap.
+      - MART_API_UPSTREAM=${MART_API_UPSTREAM:-gwan-mart-backend:3011}
+      - MART_SITE_URL=${MART_SITE_URL:-https://mart.gwan.cloud}
 
     networks:
       - gwan-network

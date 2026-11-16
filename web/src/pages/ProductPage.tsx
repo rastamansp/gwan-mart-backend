@@ -19,6 +19,7 @@ import {
 import { ErrorState } from '../components/States';
 import { Rating } from '../components/Rating';
 import { Notice, useNotice } from '../components/Notice';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 export function ProductPage() {
   // A rota é /product/:code — o mesmo código que o bot usa no link "Ver
@@ -37,6 +38,11 @@ export function ProductPage() {
   const [variationIndex, setVariationIndex] = useState<number | null>(null);
 
   const { notice, notify } = useNotice();
+
+  // Aba com o nome do produto assim que ele carrega.
+  useDocumentTitle(
+    product?.name ?? (notFound ? 'Produto não encontrado' : null),
+  );
 
   useEffect(() => {
     let active = true;

@@ -76,6 +76,9 @@ dist
 # Gatsby files
 .cache/
 public
+# ...mas o public/ da loja é o dos arquivos estáticos do Vite (ícones, imagem
+# de prévia), que vão para o build e precisam estar versionados.
+!web/public/
 
 # Storybook build outputs
 .out

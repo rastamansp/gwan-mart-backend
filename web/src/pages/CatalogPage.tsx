@@ -10,11 +10,13 @@ import {
   type SimilarProduct,
 } from '../lib/api';
 import { ProductCard } from '../components/ProductCard';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { EmptyState, ErrorState, LoadingGrid } from '../components/States';
 
 const PAGE_SIZES = [12, 24, 48];
 
 export function CatalogPage() {
+  useDocumentTitle('Catálogo');
   // A busca vive na URL: um catálogo filtrado precisa ser compartilhável, e
   // voltar do produto tem que devolver o visitante ao mesmo lugar.
   const [params, setParams] = useSearchParams();
