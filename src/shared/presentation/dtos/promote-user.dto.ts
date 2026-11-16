@@ -11,6 +11,6 @@ export class PromoteUserDto {
     enumName: 'UserRole'
   })
   @IsOptional()
-  @IsEnum(UserRole, { message: 'Role deve ser USER, ADMIN ou ADMIN' })
+  @IsEnum(UserRole, { message: 'Role deve ser USER ou ADMIN' })
   targetRole?: UserRole = UserRole.ADMIN;
 }

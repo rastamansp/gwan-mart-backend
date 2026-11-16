@@ -7,7 +7,7 @@ import { UserNotFoundException } from '../../domain/exceptions/user-not-found.ex
 import { InsufficientPermissionsException } from '../../domain/exceptions/insufficient-permissions.exception';
 
 @Injectable()
-export class PromoteUserToCorretorUseCase {
+export class PromoteUserUseCase {
   constructor(
     @Inject('IUserRepository')
     private readonly userRepository: IUserRepository,
@@ -15,7 +15,7 @@ export class PromoteUserToCorretorUseCase {
     private readonly logger: ILogger,
   ) {}
 
-  async execute(targetUserId: string, promoterUserId: string, targetRole: UserRole = UserRole.CORRETOR): Promise<User> {
+  async execute(targetUserId: string, promoterUserId: string, targetRole: UserRole = UserRole.ADMIN): Promise<User> {
     const startTime = Date.now();
     
     this.logger.info('Iniciando promoção de usuário', {

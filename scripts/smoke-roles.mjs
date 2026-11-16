@@ -135,7 +135,7 @@ async function main() {
     const p = await req('GET', '/auth/profile', { token: a.token });
     check('papel continua USER depois da tentativa', p.body?.role === 'USER', `papel ${p.body?.role}`);
 
-    const rAdm = await req('PUT', `/users/${a.id}`, { token: admin, body: { role: 'CORRETOR' } });
+    const rAdm = await req('PUT', `/users/${a.id}`, { token: admin, body: { role: 'ADMIN' } });
     check('ADMIN editando papel pelo PUT /users/:id responde 400', ...status(rAdm, 400));
 
     const rNome = await req('PUT', `/users/${a.id}`, {

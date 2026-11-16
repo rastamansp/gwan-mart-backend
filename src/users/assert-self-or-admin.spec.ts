@@ -13,8 +13,8 @@ describe('assertSelfOrAdmin', () => {
     expect(() => assertSelfOrAdmin(eu, 'u-2')).toThrow(ForbiddenException);
   });
 
-  it('recusa CORRETOR sobre outro cadastro', () => {
-    expect(() => assertSelfOrAdmin({ id: 'c-1', role: UserRole.CORRETOR }, 'u-2')).toThrow(
+  it('recusa papel desconhecido (ex.: o CORRETOR aposentado) sobre outro cadastro', () => {
+    expect(() => assertSelfOrAdmin({ id: 'c-1', role: 'CORRETOR' }, 'u-2')).toThrow(
       ForbiddenException,
     );
   });
