@@ -16,8 +16,8 @@ npm-debug.log
 
 # Environment files
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 env.production
 
 # Documentation (opcional, manter README.md)
@@ -47,8 +47,11 @@ logs
 # Docker
 docker-compose*.yml
 Dockerfile.with-migrations
-docker-entrypoint.sh
+# docker-entrypoint.sh NÃO entra aqui: o Dockerfile o copia e ele é o ENTRYPOINT
 .dockerignore
+
+# Loja: tem contexto de build próprio (web/), a API não precisa dela
+web
 
 # Other
 test-*.html

@@ -1,0 +1,3 @@
+# Scripts de shell rodam dentro de container Linux: CRLF quebra o shebang
+# ("/bin/sh^M: not found") quando a imagem é construída a partir de um checkout no Windows.
+*.sh text eol=lf

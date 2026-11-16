@@ -59,7 +59,7 @@
     "db:seed": "npx ts-node -r tsconfig-paths/register scripts/run-seeder.ts",
     "db:seed:simple": "npx ts-node -r tsconfig-paths/register scripts/simple-seeder.ts",
     "db:seed:products": "npx ts-node -r tsconfig-paths/register src/database/seed-products.ts",
-    "typeorm:migration:run:prod": "node ./node_modules/typeorm/cli.js migration:run -d dist/src/config/data-source.js"
+    "typeorm:migration:run:prod": "node ./node_modules/typeorm/cli.js migration:run -d dist/config/data-source.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.20.0",
