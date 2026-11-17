@@ -11,9 +11,10 @@ import { ChatModelRouterService } from './services/providers/chat-model-router.s
 import { ClaudeChatProviderService } from './services/providers/claude-chat-provider.service';
 import { OpenAiChatProviderService } from './services/providers/openai-chat-provider.service';
 import { SharedModule } from '../shared/shared.module';
+import { ProductsModule } from '../products/products.module';
 
 @Module({
-  imports: [ConfigModule, forwardRef(() => SharedModule)],
+  imports: [ConfigModule, forwardRef(() => SharedModule), ProductsModule],
   controllers: [ChatController],
   providers: [
     ChatService,

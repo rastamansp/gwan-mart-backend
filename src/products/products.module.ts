@@ -104,6 +104,9 @@ import {
     ProcessProductsIntoChunksUseCase,
     ProcessAndSaveProductsToVectorDBUseCase,
 
+    // Repositorio: o chat usa a busca textual quando o LLM nao responde.
+    'IProductRepository',
+
     // Services
     ProductsService,
     OpenAIService,
