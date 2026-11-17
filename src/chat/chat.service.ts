@@ -35,7 +35,7 @@ export class ChatService {
     // Usar MCP_BRIDGE_BASE se definido, senão construir a partir de MCP_BASE_URL ou PORT
     const mcpBridgeBaseEnv = this.config.get<string>('MCP_BRIDGE_BASE');
     const mcpBaseUrl = this.config.get<string>('MCP_BASE_URL');
-    const port = this.config.get<string>('PORT') || '3001';
+    const port = this.config.get<string>('PORT') || '3011';
     
     if (mcpBridgeBaseEnv) {
       this.mcpBridgeBase = mcpBridgeBaseEnv;

@@ -1,5 +1,5 @@
 ### Variáveis
-@baseUrl = http://localhost:3009/api
+@baseUrl = http://localhost:3011/api
 @token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImpvYW9AZW1haWwuY29tIiwic3ViIjoiOThjNDk0YTMtZThiZC00YjQzLWIxNjQtNTBlZWMxOGFmNGNmIiwicm9sZSI6IkNPUlJFVE9SIiwiaWF0IjoxNzYzMjU3MjU0LCJleHAiOjE3NjMzNDM2NTR9.2xDAHGZm9KrqQL1bNCyP2xfPtWbbi0c86mXtCXHNLIU
 @userId = 98c494a3-e8bd-4b43-b164-50eec18af4cf
 

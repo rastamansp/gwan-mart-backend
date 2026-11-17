@@ -1,5 +1,5 @@
 ### Health Check
-GET http://localhost:3001/api/health
+GET http://localhost:3011/api/health
 
 ### Health Check via HTTPS (produção)
 GET https://api-events.gwan.com.br/api/health

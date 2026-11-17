@@ -105,11 +105,11 @@ Edite o arquivo `.env` com suas configurações:
 ```env
 # Servidor
 NODE_ENV=development
-PORT=3001
+PORT=3011
 
 # Database
 DB_HOST=localhost
-DB_PORT=5432
+DB_PORT=5444
 DB_USER=postgres
 DB_PASSWORD=postgres
 DB_NAME=gwan_mart
@@ -123,7 +123,7 @@ OPENAI_API_KEY=sk-proj-...
 OPENAI_MODEL=gpt-4o-mini
 
 # MCP (opcional)
-MCP_BASE_URL=http://localhost:3001
+MCP_BASE_URL=http://localhost:3011
 MCP_AUTH_TOKEN=your-mcp-token
 ```
 
@@ -151,8 +151,8 @@ npm run start:prod
 
 ### 7. Acesse a Documentação
 
-- **Swagger UI**: http://localhost:3001/api
-- **Health Check**: http://localhost:3001/api/health
+- **Swagger UI**: http://localhost:3011/api
+- **Health Check**: http://localhost:3011/api/health
 
 ## 📁 Estrutura do Projeto
 
@@ -278,7 +278,7 @@ Cada módulo possui um arquivo `.http` para facilitar testes via REST Client:
 **Uso:**
 ```http
 ### Login
-POST http://localhost:3001/api/auth/login
+POST http://localhost:3011/api/auth/login
 {
   "email": "admin@gwan.com.br",
   "password": "password"
@@ -303,7 +303,7 @@ POST http://localhost:3001/api/auth/login
 **Uso:**
 ```http
 ### Chat - Consulta sobre produtos
-POST http://localhost:3001/api/chat
+POST http://localhost:3011/api/chat
 {
   "message": "Liste produtos de eletrônicos",
   "userCtx": {
@@ -337,8 +337,8 @@ POST http://localhost:3001/api/chat
 echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}' | npm run start:mcp:stdio
 
 # Via HTTP bridge
-GET http://localhost:3001/api/mcp/tools
-POST http://localhost:3001/api/mcp/tools/call
+GET http://localhost:3011/api/mcp/tools
+POST http://localhost:3011/api/mcp/tools/call
 {
   "name": "list_products",
   "arguments": {

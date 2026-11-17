@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, Like, Between } from 'typeorm';
+import { Repository, FindOptionsWhere, Like, Between, QueryFailedError } from 'typeorm';
 import { Product } from '../../domain/entities/product.entity';
 import { ProductImage } from '../../domain/entities/product-image.entity';
 import {
@@ -24,7 +24,9 @@ export class TypeOrmProductRepository implements IProductRepository {
   ) {}
 
   async create(product: Product): Promise<Product> {
-    const savedProduct = await this.productRepository.save(product);
+    const savedProduct = await this.productRepository
+      .save(product)
+      .catch((error) => rethrowDuplicateCode(error, product.code));
 
     // Salvar imagens se fornecidas
     if (product.images && product.images.length > 0) {
@@ -61,23 +63,31 @@ export class TypeOrmProductRepository implements IProductRepository {
   }
 
   async update(id: number, product: Partial<Product>): Promise<Product> {
-    await this.productRepository.update(id, product);
+    // `images` e relacao OneToMany: o Repository.update do TypeORM nao a
+    // atualiza e responde 500 se ela vier no objeto. Separar antes.
+    const { images, ...columns } = product;
 
-    // Atualizar imagens se fornecidas
-    if (product.images) {
-      // Remover imagens existentes
-      await this.imageRepository.delete({ productId: id });
-
-      // Adicionar novas imagens
-      if (product.images.length > 0) {
-        const images = product.images.map((image, index) => ({
-          ...image,
-          productId: id,
-          order: index,
-        }));
-        await this.imageRepository.save(images);
+    await this.productRepository.manager.transaction(async (manager) => {
+      if (Object.keys(columns).length > 0) {
+        await manager.update(Product, id, columns);
       }
-    }
+
+      // `images` definido substitui a lista inteira (vazia remove tudo);
+      // ausente mantem as fotos atuais.
+      if (images) {
+        await manager.delete(ProductImage, { productId: id });
+        if (images.length > 0) {
+          await manager.save(
+            ProductImage,
+            images.map((image, index) => ({
+              ...image,
+              productId: id,
+              order: index,
+            })),
+          );
+        }
+      }
+    }).catch((error) => rethrowDuplicateCode(error, columns.code));
 
     return this.findById(id);
   }
@@ -315,4 +325,20 @@ export class TypeOrmProductRepository implements IProductRepository {
       categories,
     };
   }
+}
+
+/**
+ * `code` é único no banco — inclusive entre produtos removidos (soft delete
+ * mantém a linha). Sem esta tradução, código repetido chega ao cliente como 500.
+ */
+export function rethrowDuplicateCode(error: unknown, code: string | undefined): never {
+  if (
+    error instanceof QueryFailedError &&
+    (error as QueryFailedError & { driverError?: { code?: string } }).driverError?.code === '23505'
+  ) {
+    throw new ConflictException(
+      `Já existe um produto com o código "${code ?? ''}" (inclusive entre os removidos). Use outro código.`,
+    );
+  }
+  throw error;
 }

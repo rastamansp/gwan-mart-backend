@@ -1,6 +1,6 @@
 ### Chat API - Testes
 
-@baseUrl = http://localhost:3009
+@baseUrl = http://localhost:3011
 
 ### (Opcional) Verificar tools disponíveis no bridge MCP
 GET {{baseUrl}}/api/mcp/tools

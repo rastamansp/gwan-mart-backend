@@ -278,7 +278,7 @@ export async function bootstrap() {
     `,
   });
 
-  const port = process.env.PORT || 3001;
+  const port = process.env.PORT || 3011;
   await app.listen(port);
   console.log(`🚀 Servidor rodando na porta ${port}`);
   console.log(`📚 Documentação disponível em http://localhost:${port}/api`);

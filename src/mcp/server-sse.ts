@@ -16,7 +16,7 @@ async function main() {
   const { document } = await bootstrapMcp();
   
   // Converter para tools MCP
-  const baseUrl = process.env.MCP_BASE_URL || 'http://localhost:3001';
+  const baseUrl = process.env.MCP_BASE_URL || 'http://localhost:3011';
   const tools = openapiToMcpTools(document, baseUrl);
   const authMiddleware = new McpAuthMiddleware();
   const authToken = process.env.MCP_AUTH_TOKEN;

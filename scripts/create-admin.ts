@@ -59,8 +59,15 @@ async function createAdmin() {
       adminEmail,
       hashedPassword,
       '+5511999999999',
-      UserRole.ADMIN
+      null, // whatsappNumber
+      null, // preferredAgentId
+      // ⚠️ Antes UserRole.ADMIN era passado na posicao do whatsappNumber: o usuario
+      // nascia USER com WhatsApp "ADMIN" e o log dizia "Role: ADMIN" (2026-11-16).
+      UserRole.ADMIN,
     );
+    if (adminUser.role !== UserRole.ADMIN) {
+      throw new Error(`Papel montado errado: ${adminUser.role}`);
+    }
 
     const savedAdmin = await userRepository.save(adminUser);
     
