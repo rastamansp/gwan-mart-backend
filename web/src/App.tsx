@@ -1,9 +1,13 @@
-import { Link, Route, Routes } from 'react-router-dom';
+import { Link, Route, Routes, useLocation } from 'react-router-dom';
 import { HomePage } from './pages/HomePage';
 import { CatalogPage } from './pages/CatalogPage';
 import { ProductPage } from './pages/ProductPage';
 import { ChatPanel } from './components/ChatPanel';
 import { useDocumentTitle } from './lib/useDocumentTitle';
+import { AdminLayout } from './pages/admin/AdminSession';
+import { AdminLoginPage } from './pages/admin/AdminLoginPage';
+import { AdminProductsPage } from './pages/admin/AdminProductsPage';
+import { AdminProductFormPage } from './pages/admin/AdminProductFormPage';
 
 function NotFound() {
   useDocumentTitle('Página não encontrada');
@@ -22,6 +26,9 @@ function NotFound() {
 }
 
 export function App() {
+  // O assistente de vendas é para o cliente; na área do lojista só atrapalha.
+  const inAdmin = useLocation().pathname.startsWith('/admin');
+
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white/90 backdrop-blur">
@@ -46,23 +53,34 @@ export function App() {
           <Route path="/catalog" element={<CatalogPage />} />
           {/* Mesma rota que o backend monta em buildProductUrl(). */}
           <Route path="/product/:code" element={<ProductPage />} />
+          <Route path="/admin/login" element={<AdminLoginPage />} />
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminProductsPage />} />
+            <Route path="produtos/novo" element={<AdminProductFormPage />} />
+            <Route path="produtos/:id" element={<AdminProductFormPage />} />
+          </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
 
       <footer className="border-t border-zinc-200 bg-white">
-        <div className="mx-auto max-w-6xl px-4 py-6 text-sm text-zinc-500">
-          Gwan Mart — parte do ecossistema{' '}
-          <a
-            href="https://gwan.cloud"
-            className="font-medium text-zinc-700 hover:underline"
-          >
-            gwan.cloud
-          </a>
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-6 text-sm text-zinc-500">
+          <span>
+            Gwan Mart — parte do ecossistema{' '}
+            <a
+              href="https://gwan.cloud"
+              className="font-medium text-zinc-700 hover:underline"
+            >
+              gwan.cloud
+            </a>
+          </span>
+          <Link to="/admin" className="text-zinc-400 hover:text-zinc-700 hover:underline">
+            Área do lojista
+          </Link>
         </div>
       </footer>
 
-      <ChatPanel />
+      {!inAdmin && <ChatPanel />}
     </div>
   );
 }

@@ -94,6 +94,7 @@ export class MinioStorageService implements IStorageService, OnModuleInit {
 
     // Garantir que o bucket existe
     await this.ensureBucketExists();
+    await this.ensurePublicProductImages();
 
     this.logger.info('MinIO Storage Service inicializado', {
       endpoint,
@@ -127,6 +128,42 @@ export class MinioStorageService implements IStorageService, OnModuleInit {
         error: error.message,
       });
       throw error;
+    }
+  }
+
+  /**
+   * Fotos de produto (prefixo `products/`) precisam abrir na vitrine sem
+   * credencial; o resto do bucket continua privado.
+   *
+   * Best-effort: a credencial do app pode não ter s3:PutBucketPolicy. Nesse
+   * caso a API sobe igual — loja sem foto é melhor que API fora — e o log diz
+   * o comando para aplicar a policy à mão uma vez.
+   */
+  private async ensurePublicProductImages(): Promise<void> {
+    const policy = {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: { AWS: ['*'] },
+          Action: ['s3:GetObject'],
+          Resource: [`arn:aws:s3:::${this.bucketName}/products/*`],
+        },
+      ],
+    };
+
+    try {
+      await this.minioClient.setBucketPolicy(this.bucketName, JSON.stringify(policy));
+      this.logger.info('Leitura pública aplicada às fotos de produto', {
+        bucket: this.bucketName,
+        prefix: 'products/',
+      });
+    } catch (error) {
+      this.logger.warn('Não foi possível tornar as fotos de produto públicas', {
+        bucket: this.bucketName,
+        error: error.message,
+        hint: `mc anonymous set download <alias>/${this.bucketName}/products`,
+      });
     }
   }
 

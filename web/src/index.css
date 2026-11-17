@@ -9,3 +9,10 @@
 body {
   @apply bg-zinc-50 text-zinc-900 antialiased;
 }
+
+@layer components {
+  /* Campos da área do lojista: um estilo só para não repetir 8 classes por input. */
+  .admin-input {
+    @apply block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:bg-zinc-100;
+  }
+}

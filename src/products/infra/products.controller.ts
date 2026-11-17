@@ -9,7 +9,11 @@ import {
   Query,
   ParseIntPipe,
   UseGuards,
+  Inject,
+  UseInterceptors,
+  UploadedFile,
   BadRequestException,
+  HttpCode,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -20,6 +24,7 @@ import {
   ApiBearerAuth,
   ApiBody,
   ApiExtension,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@/auth/guards/roles.guard';
@@ -51,6 +56,11 @@ import {
   toPublicProduct,
   toPublicProducts,
 } from '../application/public-product';
+import { randomUUID } from 'node:crypto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import type { Express } from 'express';
+import { MAX_IMAGE_BYTES, detectImageExtension } from './image-signature';
+import { IStorageService } from '@/shared/application/interfaces/storage-service.interface';
 import { BaseResponseDto } from '@/shared/application/dto/base-response.dto';
 import { RequestId } from '@/shared/infrastructure/logger/request-id.decorator';
 
@@ -71,6 +81,8 @@ export class ProductsController {
     private readonly processProductsIntoChunksUseCase: ProcessProductsIntoChunksUseCase,
     private readonly processAndSaveProductsToVectorDBUseCase: ProcessAndSaveProductsToVectorDBUseCase,
     private readonly searchProductsUseCase: SearchProductsUseCase,
+    @Inject('IStorageService')
+    private readonly storageService: IStorageService,
   ) {}
 
   @Post()
@@ -357,6 +369,52 @@ export class ProductsController {
   ): Promise<BaseResponseDto<any>> {
     const result = await this.createProductUseCase.execute(createProductDto);
     return BaseResponseDto.success(result);
+  }
+
+  @Post('images')
+  @HttpCode(201)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: MAX_IMAGE_BYTES, files: 1 } }),
+  )
+  @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: 'Enviar foto de produto',
+    description:
+      'Grava a foto no MinIO (prefixo products/, de leitura pública) e devolve a URL para usar em thumbnail, realImage e images. Aceita jpg, png e webp de até 5 MB. Exige ADMIN.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Foto gravada; devolve { url }' })
+  @ApiResponse({ status: 400, description: 'Arquivo ausente, grande demais ou de tipo não aceito' })
+  @ApiResponse({ status: 401, description: 'Sem token' })
+  @ApiResponse({ status: 403, description: 'Usuário autenticado sem papel ADMIN' })
+  async uploadProductImage(
+    @UploadedFile() file: Express.Multer.File | undefined,
+  ): Promise<BaseResponseDto<{ url: string }>> {
+    if (!file) {
+      throw new BadRequestException('Envie a foto no campo "file".');
+    }
+    // O mimetype vem do cliente; a assinatura dos primeiros bytes é o que
+    // impede um arquivo qualquer renomeado para .jpg de virar "foto" pública.
+    const ext = detectImageExtension(file.buffer);
+    if (!ext) {
+      throw new BadRequestException('A foto precisa ser JPG, PNG ou WebP.');
+    }
+    const key = await this.storageService.uploadFile(
+      file.buffer,
+      // Nome sorteado: duas fotos no mesmo milissegundo não podem se sobrescrever.
+      `${randomUUID()}.${ext}`,
+      'products',
+    );
+    return BaseResponseDto.success({ url: this.storageService.getFileUrl(key) });
   }
 
   @Post('import')

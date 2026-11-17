@@ -28,8 +28,9 @@ export class UpdateProductUseCase
     // Separar dados de produto das imagens
     const { images, ...productData } = data;
 
-    // Criar imagens se fornecidas
-    if (images && images.length > 0) {
+    // Lista definida substitui as fotos (inclusive `[]`, que remove todas);
+    // ausente mantem as atuais.
+    if (images) {
       (productData as any).images = images.map((url, index) => ({
         url,
         order: index,

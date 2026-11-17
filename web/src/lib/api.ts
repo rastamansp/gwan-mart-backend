@@ -26,7 +26,7 @@ function resolveBaseUrl(): string {
   return 'http://localhost:3011/api';
 }
 
-const BASE_URL: string = resolveBaseUrl();
+export const BASE_URL: string = resolveBaseUrl();
 
 export interface ProductImage {
   id: number;

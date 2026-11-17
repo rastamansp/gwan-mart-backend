@@ -8,8 +8,31 @@ import {
   IsIn,
   Min,
   Max,
+  ValidateNested,
+  MaxLength,
 } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
+
+/**
+ * Variação como a loja a lê (`nome`, `cor`, `disponivel`).
+ *
+ * Precisa ser classe: com `any[]` o `enableImplicitConversion` do pipe global
+ * convertia cada objeto em `[]`, e a API gravava `[[]]` (achado em 2026-11-16).
+ */
+export class ProductVariationDto {
+  @IsString()
+  @MaxLength(120)
+  nome: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  cor?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  disponivel?: boolean;
+}
 
 /** Colunas pelas quais a listagem pública pode ordenar (`price` = `originalPrice`). */
 export const PUBLIC_SORT_FIELDS = [
@@ -57,7 +80,7 @@ export class CreateProductDto {
   @IsString()
   supplierProductDescription: string;
 
-  @IsUrl()
+  @IsUrl({ require_tld: false })
   thumbnail: string;
 
   @IsString()
@@ -93,9 +116,11 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsArray()
-  variations?: any[];
+  @ValidateNested({ each: true })
+  @Type(() => ProductVariationDto)
+  variations?: ProductVariationDto[];
 
-  @IsUrl()
+  @IsUrl({ require_tld: false })
   realImage: string;
 
   @IsString()
@@ -154,7 +179,7 @@ export class UpdateProductDto {
   supplierProductDescription?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsUrl({ require_tld: false })
   thumbnail?: string;
 
   @IsOptional()
@@ -194,10 +219,12 @@ export class UpdateProductDto {
 
   @IsOptional()
   @IsArray()
-  variations?: any[];
+  @ValidateNested({ each: true })
+  @Type(() => ProductVariationDto)
+  variations?: ProductVariationDto[];
 
   @IsOptional()
-  @IsUrl()
+  @IsUrl({ require_tld: false })
   realImage?: string;
 
   @IsOptional()
