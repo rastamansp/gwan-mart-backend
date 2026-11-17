@@ -135,7 +135,7 @@ Use o arquivo `whatsapp-webhook.http` para testar diferentes tipos de eventos:
 ```bash
 # Executar requisições via REST Client (VS Code)
 # Ou usar curl:
-curl -X POST http://localhost:3001/api/webhooks/whatsapp \
+curl -X POST http://localhost:3011/api/webhooks/whatsapp \
   -H "Content-Type: application/json" \
   -d '{
     "event": "messages.upsert",
@@ -175,7 +175,7 @@ if (headers['x-evolution-api-token'] !== process.env.EVOLUTION_API_TOKEN) {
 
 ## Documentação Swagger
 
-Acesse `http://localhost:3001/api` para ver a documentação completa no Swagger, incluindo exemplos de payloads para cada tipo de evento.
+Acesse `http://localhost:3011/api` para ver a documentação completa no Swagger, incluindo exemplos de payloads para cada tipo de evento.
 
 ## Integração com Chat (Chatbot Automático)
 

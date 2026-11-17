@@ -1,5 +1,5 @@
 ### Variáveis
-@baseUrl = http://localhost:3001/api
+@baseUrl = http://localhost:3011/api
 @token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQGd3YW5zaG9wLmNvbSIsInN1YiI6IjEiLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3Mjg1OTU2MDB9.example
 
 ### Obter estatísticas do dashboard

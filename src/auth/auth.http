@@ -1,5 +1,5 @@
 ### Variáveis
-@baseUrl = http://localhost:3009/api
+@baseUrl = http://localhost:3011/api
 
 ### Fazer login
 POST {{baseUrl}}/auth/login

@@ -28,7 +28,7 @@ export class McpBridgeController {
   private readonly serverAuthToken?: string;
 
   constructor() {
-    this.baseUrl = process.env.MCP_BASE_URL || 'http://localhost:3001';
+    this.baseUrl = process.env.MCP_BASE_URL || 'http://localhost:3011';
     this.serverAuthToken = process.env.MCP_AUTH_TOKEN;
     this.requireAuth = !!this.serverAuthToken;
   }
