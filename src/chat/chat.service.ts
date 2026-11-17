@@ -1,10 +1,23 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { MessageChannel } from '../shared/domain/value-objects/message-channel.enum';
 import { ResponseFormatterService } from './services/response-formatter.service';
 import { FormattedResponse } from './interfaces/chat-response.interface';
 import { ChatModelRouterService } from './services/providers/chat-model-router.service';
+import { IProductRepository } from '../products/domain/repositories/product.repository.interface';
+import { buildCatalogFallbackAnswer, catalogQueryFromMessage } from './services/catalog-fallback';
+import { buildProductUrl } from './services/formatters/product-url';
+
+export type ChatMode = 'assistant' | 'catalog';
+
+export interface ChatResult {
+  answer: string;
+  toolsUsed: { name: string; arguments?: Record<string, unknown> }[];
+  formattedResponse?: FormattedResponse;
+  /** `catalog` quando o LLM falhou e a resposta veio da busca no catálogo. */
+  mode?: ChatMode;
+}
 
 // Usamos any para permitir propriedades específicas do OpenAI (ex.: tool_calls)
 type OpenAIMessage = any;
@@ -28,6 +41,8 @@ export class ChatService {
     // da Anthropic e converte a resposta de volta, entao o restante deste
     // service (loop de tool_calls, choices[0].message) segue inalterado.
     private readonly chatModelRouter: ChatModelRouterService,
+    @Inject('IProductRepository')
+    private readonly productRepository: IProductRepository,
   ) {
     this.openaiApiKey = this.config.get<string>('OPENAI_API_KEY')!;
     this.openaiModel = this.config.get<string>('OPENAI_MODEL') || 'gpt-4o-mini';
@@ -50,11 +65,65 @@ export class ChatService {
     this.mcpServerToken = this.config.get<string>('MCP_AUTH_TOKEN');
   }
 
+  /**
+   * Responde pelo LLM; se o provedor falhar (sem crédito, chave inválida,
+   * fora do ar, timeout), responde pela busca textual no catálogo em vez de
+   * devolver 500 ao visitante. Só falha de verdade (503) se nem o catálogo
+   * responder.
+   */
   public async chat(
     message: string,
     userCtx?: Record<string, unknown>,
     channel?: MessageChannel,
-  ): Promise<{ answer: string; toolsUsed: { name: string; arguments?: Record<string, unknown> }[]; formattedResponse?: FormattedResponse }> {
+  ): Promise<ChatResult> {
+    try {
+      const result = await this.chatWithModel(message, userCtx, channel);
+      return { ...result, mode: 'assistant' };
+    } catch (error) {
+      this.logger.error(
+        `[CHAT] Provedor de IA falhou; respondendo pela busca no catálogo: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return this.answerFromCatalog(message);
+    }
+  }
+
+  private async answerFromCatalog(message: string): Promise<ChatResult> {
+    try {
+      const query = catalogQueryFromMessage(message);
+      const matches = query ? await this.productRepository.searchByText(query, 5) : [];
+      const featured =
+        matches.length > 0 ? [] : (await this.productRepository.findFeatured()).slice(0, 5);
+
+      const frontendUrl = this.config.get<string>('FRONTEND_URL') || 'https://mart.gwan.cloud';
+      const productPath = this.config.get<string>('FRONTEND_PRODUCT_PATH') || 'product';
+
+      return {
+        answer: buildCatalogFallbackAnswer({
+          query,
+          matches,
+          featured,
+          productUrl: (code) => buildProductUrl(frontendUrl, productPath, code),
+        }),
+        toolsUsed: [{ name: 'catalog_text_search', arguments: { query } }],
+        mode: 'catalog',
+      };
+    } catch (error) {
+      this.logger.error(
+        `[CHAT] Busca no catálogo também falhou: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      throw new ServiceUnavailableException(
+        'O assistente está indisponível no momento. Fale com a gente pelo WhatsApp.',
+      );
+    }
+  }
+
+  private async chatWithModel(
+    message: string,
+    userCtx?: Record<string, unknown>,
+    channel?: MessageChannel,
+  ): Promise<ChatResult> {
     const systemPrompt = this.buildSystemPrompt();
     const messages: OpenAIMessage[] = [
       { role: 'system', content: systemPrompt },

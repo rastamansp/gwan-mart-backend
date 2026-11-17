@@ -42,6 +42,13 @@ export class ChatResponseDto {
     type: 'object',
   })
   formattedResponse?: FormattedResponse;
+
+  @ApiPropertyOptional({
+    description:
+      'assistant = resposta do modelo de IA; catalog = o provedor de IA falhou e a resposta veio da busca textual no catálogo',
+    enum: ['assistant', 'catalog'],
+  })
+  mode?: 'assistant' | 'catalog';
 }
 
 
